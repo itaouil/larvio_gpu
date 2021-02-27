@@ -1,4 +1,6 @@
-# LARVIO
+# LARVIO-GPU
+This repository is a version of LARVIO with GPU acceleration for the frontend part. It can run on Nvidia Jetson Nano in real-time.
+
 LARVIO is short for Lightweight, Accurate and Robust monocular Visual Inertial Odometry, which is based on hybrid EKF VIO. It is featured by augmenting features with long track length into the filter state of MSCKF by 1D IDP to provide accurate positioning results.
 
 The core algorithm of LARVIO depends on `Eigen`, `Boost`, `Suitesparse`, `Ceres` and `OpenCV`, making the algorithm of good portability. 
