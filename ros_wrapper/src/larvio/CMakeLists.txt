@@ -28,11 +28,12 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 ## System dependencies are found with CMake's conventions
+find_package(CUDA REQUIRED)
 find_package(Boost REQUIRED)
+find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(SuiteSparse REQUIRED)
-find_package(Ceres REQUIRED)
 
 ###################################
 ## catkin specific configuration ##
@@ -55,20 +56,28 @@ catkin_package(
 include_directories(
     include
     ${LARVIO_INCLUDE}
-    ${catkin_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
-    ${OpenCV_INCLUDE_DIRS}
-    ${SUITESPARSE_INCLUDE_DIRS}
+    ${CUDA_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIR}
     ${CERES_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+    /usr/local/vilib/include
+    ${SUITESPARSE_INCLUDE_DIRS}
+    /usr/local/cuda/targets/x86_64-linux/include
 )
+
+## Shared libraries
+link_directories(/usr/local/vilib/lib)
 
 # Image processor
 add_library(image_processor
-    ${LARVIO_SRC}/image_processor.cpp
     ${LARVIO_SRC}/ORBDescriptor.cpp
+    ${LARVIO_SRC}/image_processor.cpp
 )
 target_link_libraries(image_processor
+    libvilib.so
+    ${CUDA_LIBRARIES}
     ${OpenCV_LIBRARIES}
 )
 
