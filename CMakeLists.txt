@@ -8,22 +8,29 @@ project(larvio)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 #set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
-find_package(OpenCV REQUIRED)
+find_package(CUDA REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(SuiteSparse REQUIRED)
 find_package(Pangolin REQUIRED)
+find_package(SuiteSparse REQUIRED)
 
 include_directories(
-    ${PROJECT_SOURCE_DIR}/include
-    ${OpenCV_INCLUDE_DIRS}
-    ${SUITESPARSE_INCLUDE_DIRS}
-    ${CERES_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIR}
+    ${CUDA_INCLUDE_DIRS}
+    ${CERES_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIR}
+    ${OpenCV_INCLUDE_DIRS}
+    /usr/local/vilib/include
     ${Pangolin_INCLUDE_DIRS}
+    ${SUITESPARSE_INCLUDE_DIRS}
+    ${PROJECT_SOURCE_DIR}/include
+    /usr/local/cuda/targets/x86_64-linux/include
 )
+
+# Shared libraries
+link_directories(/usr/local/vilib/lib)
 
 # Image processor
 add_library(image_processor
@@ -31,6 +38,8 @@ add_library(image_processor
     ${PROJECT_SOURCE_DIR}/src/ORBDescriptor.cpp
 )
 target_link_libraries(image_processor
+    libvilib.so
+    ${CUDA_LIBRARIES}
     ${OpenCV_LIBRARIES}
 )
 

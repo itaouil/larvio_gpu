@@ -12,20 +12,37 @@
 #ifndef IMAGE_PROCESSOR_H
 #define IMAGE_PROCESSOR_H
 
-#include <larvio/feature_msg.h>
+// ROS
+#include "ros/ros.h"
 
-#include <vector>
+// LARVIO
+#include "sensors/ImuData.hpp"
+#include <ORB/ORBDescriptor.h>
+#include <larvio/feature_msg.h>
+#include "sensors/ImageData.hpp"
+
+// C++
 #include <map>
+#include <vector>
+#include <fstream>
 #include <boost/shared_ptr.hpp>
+
+// OpenCV
 #include <opencv2/opencv.hpp>
 #include <opencv2/video.hpp>
 
-#include <ORB/ORBDescriptor.h>
+// Vilib
+#include "vilib/config.h"
+#include "vilib/statistics.h"
+#include "vilib/cuda_common.h"
+#include "vilib/storage/pyramid_pool.h"
+#include "vilib/feature_detection/fast/fast_gpu.h"
+#include "vilib/feature_detection/detector_base_gpu.h"
+#include "vilib/feature_tracker/feature_tracker_gpu.h"
+#include "vilib/feature_detection/harris/harris_gpu.h"
+#include "vilib/feature_tracker/feature_tracker_base.h"
+#include "vilib/feature_tracker/feature_tracker_options.h"
 
-#include <fstream>
-
-#include "sensors/ImuData.hpp"
-#include "sensors/ImageData.hpp"
 
 namespace larvio {
 
@@ -129,6 +146,22 @@ private:
       const cv::Matx33f& R_p_c,
       const cv::Vec4d& intrinsics,
       std::vector<cv::Point2f>& compenstated_pts);
+
+  /*
+   * @brief setImageProperties
+   *    Sets image properties consisting of both the
+   *    width as well as the height for the vilib library
+   *    to be able to process the image
+   */
+  bool setImageProperties();
+
+  /*
+   * @brief initializeVilib
+   *    Initialize the feature detector and tracker
+   *    using the vilib libray to process the detection
+   *    and tracking on the GPU.
+   */
+  bool initializeVilib();
 
   /*
    * @brief initializeFirstFrame
@@ -323,6 +356,10 @@ private:
 
   // flag for first useful image msg
   bool bFirstImg;
+
+  // Vilib members
+  std::shared_ptr<vilib::DetectorBaseGPU> detector_gpu;
+  std::shared_ptr<vilib::FeatureTrackerBase> tracker_gpu;
 };
 
 typedef ImageProcessor::Ptr ImageProcessorPtr;

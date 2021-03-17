@@ -67,7 +67,7 @@ include_directories(
     /usr/local/cuda/targets/x86_64-linux/include
 )
 
-## Shared libraries
+# Shared libraries
 link_directories(/usr/local/vilib/lib)
 
 # Image processor

@@ -8,18 +8,57 @@
 // The original file belongs to MSCKF_VIO (https://github.com/KumarRobotics/msckf_vio/)
 // Tremendous changes have been done to use it in LARVIO
 
+// C++
+#include <set>
 #include <iostream>
 #include <algorithm>
-#include <set>
+
+// Eigen
 #include <Eigen/Dense>
 
-#include <larvio/image_processor.h>
+// LARVIO
 #include <larvio/math_utils.hpp>
+#include <larvio/image_processor.h>
 
+// OpenCV
 #include <opencv2/core/utility.hpp>
 
-using namespace std;
+// Frame options
+#define FRAME_IMAGE_PYRAMID_LEVELS 5
+
+// Feature detection options
+#define FEATURE_DETECTOR_MIN_LEVEL 0
+#define FEATURE_DETECTOR_MAX_LEVEL 2
+#define FEATURE_DETECTOR_VERTICAL_BORDER 8
+#define FEATURE_DETECTOR_HORIZONTAL_BORDER 8
+#define FEATURE_DETECTOR_CELL_SIZE_WIDTH 32
+#define FEATURE_DETECTOR_CELL_SIZE_HEIGHT 32
+
+// Feature detector selection
+#define FEATURE_DETECTOR_FAST 0
+#define FEATURE_DETECTOR_HARRIS 1
+#define FEATURE_DETECTOR_SHI_TOMASI 2
+#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_FAST
+
+// FAST parameters
+#define FEATURE_DETECTOR_FAST_EPISLON 20.f
+#define FEATURE_DETECTOR_FAST_ARC_LENGTH 15
+#define FEATURE_DETECTOR_FAST_SCORE SUM_OF_ABS_DIFF_ON_ARC
+
+// Harris/Shi-Tomasi parameters
+#define FEATURE_DETECTOR_HARRIS_K 0.04f
+#define FEATURE_DETECTOR_HARRIS_QUALITY_LEVEL 0.01f
+#define FEATURE_DETECTOR_HARRIS_BORDER_TYPE conv_filter_border_type::BORDER_SKIP
+
+// Test framework options
+#define SAVE_FEATURES_IMAGE 0
+#define DISPLAY_FEATURES_IMAGE 0
+#define PUBLISH_FEATURES_IMAGE 1
+#define VISUALIZE_FEATURE_TRACKING 1
+
 using namespace cv;
+using namespace std;
+using namespace vilib;
 using namespace Eigen;
 
 namespace larvio {
@@ -42,25 +81,30 @@ ImageProcessor::~ImageProcessor() {
 
 
 bool ImageProcessor::loadParameters() {
+    ROS_INFO("0");
+
     cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
     if (!fsSettings.isOpened()) {
         cout << "config_file error: cannot open " << config_file << endl;
         return false;
     }
 
-    processor_config.fast_threshold = fsSettings["fast_threshold"];
+    ROS_INFO("1");
+
+    // Read config parameters
+    processor_config.img_rate = fsSettings["img_rate"];
     processor_config.patch_size = fsSettings["patch_size"];
-    processor_config.pyramid_levels = fsSettings["pyramid_levels"];
+    processor_config.min_distance = fsSettings["min_distance"];
+    processor_config.pub_frequency = fsSettings["pub_frequency"];
     processor_config.max_iteration = fsSettings["max_iteration"];
+    processor_config.fast_threshold = fsSettings["fast_threshold"];
+    processor_config.pyramid_levels = fsSettings["pyramid_levels"];
     processor_config.track_precision = fsSettings["track_precision"];
     processor_config.ransac_threshold = fsSettings["ransac_threshold"];
-
     processor_config.max_features_num = fsSettings["max_features_num"];
-    processor_config.min_distance = fsSettings["min_distance"];
     processor_config.flag_equalize = (static_cast<int>(fsSettings["flag_equalize"]) ? true : false);
 
-    processor_config.pub_frequency = fsSettings["pub_frequency"];
-    processor_config.img_rate = fsSettings["img_rate"];
+    ROS_INFO("2");
 
     // Output files directory
     fsSettings["output_dir"] >> output_dir;
@@ -68,23 +112,28 @@ bool ImageProcessor::loadParameters() {
     /*
      * Camera calibration parameters
      */
+
     // Distortion model
     fsSettings["distortion_model"] >> cam_distortion_model;
+
     // Resolution of camera
     cam_resolution[0] = fsSettings["resolution_width"];
     cam_resolution[1] = fsSettings["resolution_height"];
+
     // Camera calibration instrinsics
     cv::FileNode n_instrin = fsSettings["intrinsics"];
     cam_intrinsics[0] = static_cast<double>(n_instrin["fx"]);
     cam_intrinsics[1] = static_cast<double>(n_instrin["fy"]);
     cam_intrinsics[2] = static_cast<double>(n_instrin["cx"]);
     cam_intrinsics[3] = static_cast<double>(n_instrin["cy"]);
+
     // Distortion coefficient
     cv::FileNode n_distort = fsSettings["distortion_coeffs"];
     cam_distortion_coeffs[0] = static_cast<double>(n_distort["k1"]);
     cam_distortion_coeffs[1] = static_cast<double>(n_distort["k2"]);
     cam_distortion_coeffs[2] = static_cast<double>(n_distort["p1"]);
     cam_distortion_coeffs[3] = static_cast<double>(n_distort["p2"]);
+    
     // Extrinsics between camera and IMU
     cv::Mat T_imu_cam;
     fsSettings["T_cam_imu"] >> T_imu_cam;
@@ -92,22 +141,6 @@ bool ImageProcessor::loadParameters() {
     cv::Vec3d t_imu_cam = T_imu_cam(cv::Rect(3,0,1,3));
     R_cam_imu = R_imu_cam.t();
     t_cam_imu = -R_imu_cam.t() * t_imu_cam;
-
-    // cout << ".fast_threshold = " << processor_config.fast_threshold << endl;
-    // cout << ".patch_size = " << processor_config.patch_size << endl;
-    // cout << ".pyramid_levels = " << processor_config.pyramid_levels << endl;
-    // cout << ".max_iteration = " << processor_config.max_iteration << endl;
-    // cout << ".track_precision = " << processor_config.track_precision << endl;
-    // cout << ".ransac_threshold = " << processor_config.ransac_threshold << endl;
-    // cout << ".max_features_num = " << processor_config.max_features_num << endl;
-    // cout << ".min_distance = " << processor_config.min_distance << endl;
-    // cout << ".flag_equalize = " << processor_config.flag_equalize << endl;
-    // cout << ".pub_frequency = " << processor_config.pub_frequency << endl;
-    // cout << "cam_distortion_model = " << cam_distortion_model << endl;
-    // cout << "cam_intrinsics = " << cam_intrinsics << endl;
-    // cout << "cam_distortion_coeffs = " << cam_distortion_coeffs << endl;
-    // cout << "R_cam_imu = " << R_cam_imu << endl;
-    // cout << "t_cam_imu = " << t_cam_imu << endl;
 
     return true;
 }
@@ -333,14 +366,92 @@ void ImageProcessor::createImagePyramids() {
         BORDER_CONSTANT, false);     
 }
 
+bool ImageProcessor::initializeVilib() {
+    FeatureTrackerOptions l_feature_tracker_options;
+    l_feature_tracker_options.affine_est_gain = false;
+    l_feature_tracker_options.affine_est_offset = false;
+    l_feature_tracker_options.use_best_n_features = 150;
+    l_feature_tracker_options.reset_before_detection = false;
+    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.6 * l_feature_tracker_options.use_best_n_features;
+
+    // Create feature detector for the GPU
+    if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
+    {
+        detector_gpu.reset(new FASTGPU(cam_resolution[0],
+                                       cam_resolution[1],
+                                       FEATURE_DETECTOR_CELL_SIZE_WIDTH,
+                                       FEATURE_DETECTOR_CELL_SIZE_HEIGHT,
+                                       FEATURE_DETECTOR_MIN_LEVEL,
+                                       FEATURE_DETECTOR_MAX_LEVEL,
+                                       FEATURE_DETECTOR_HORIZONTAL_BORDER,
+                                       FEATURE_DETECTOR_VERTICAL_BORDER,
+                                       FEATURE_DETECTOR_FAST_EPISLON,
+                                       FEATURE_DETECTOR_FAST_ARC_LENGTH,
+                                       FEATURE_DETECTOR_FAST_SCORE));
+    }
+    else if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_HARRIS || FEATURE_DETECTOR_USED == FEATURE_DETECTOR_SHI_TOMASI)
+    {
+        detector_gpu.reset(new HarrisGPU(cam_resolution[0],
+                                         cam_resolution[1],
+                                         FEATURE_DETECTOR_CELL_SIZE_WIDTH,
+                                         FEATURE_DETECTOR_CELL_SIZE_HEIGHT,
+                                         FEATURE_DETECTOR_MIN_LEVEL,
+                                         FEATURE_DETECTOR_MAX_LEVEL,
+                                         FEATURE_DETECTOR_HORIZONTAL_BORDER,
+                                         FEATURE_DETECTOR_VERTICAL_BORDER,
+                                         FEATURE_DETECTOR_HARRIS_BORDER_TYPE,
+                                         (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_HARRIS),
+                                         FEATURE_DETECTOR_HARRIS_K,
+                                         FEATURE_DETECTOR_HARRIS_QUALITY_LEVEL));
+    }
+
+    tracker_gpu.reset(new FeatureTrackerGPU(l_feature_tracker_options, 1));
+    tracker_gpu->setDetectorGPU(detector_gpu, 0);
+
+    PyramidPool::init(1,
+                      cam_resolution[0],
+                      cam_resolution[1],
+                      1, // grayscale
+                      FRAME_IMAGE_PYRAMID_LEVELS,
+                      IMAGE_PYRAMID_MEMORY_TYPE);
+
+    ROS_INFO("Feature detector and tracker successfully initialized");
+}
 
 bool ImageProcessor::initializeFirstFrame() {
+    // Initialize vilib
+    initializeVilib();
+
     // Get current image
     const Mat& img = curr_pyramid_[0];
 
-    // Detect new features on the frist image.
+    // Detect new features on the first image.
     vector<Point2f>().swap(new_pts_);
-    cv::goodFeaturesToTrack(img, new_pts_, processor_config.max_features_num, 0.01, processor_config.min_distance);
+
+    // Prepare frame for detection
+    std::vector<cv::Mat> image_pyramid;
+    std::shared_ptr<Frame> frame0(new Frame(curr_pyramid_[0], 0, FRAME_IMAGE_PYRAMID_LEVELS));
+
+    // Perform detection on GPU
+    detector_gpu->reset();
+    detector_gpu->detect(frame0->pyramid_);
+
+    // Copy detected points to new_pts_ vector
+    auto & points_gpu = detector_gpu->getPoints();
+    auto & points_gpu_grid = detector_gpu->getGrid();
+    ROS_INFO_STREAM("Detected: " << points_gpu.size() << "points");
+
+    for(std::size_t i=0;i<points_gpu.size();++i)
+    {
+        if(!points_gpu_grid.isOccupied(i)) continue;
+
+        // Create Point2f object
+        Point2f feature((int)points_gpu[i].x_, (int)points_gpu[i].y_);
+
+        new_pts_.push_back(feature);
+    }
+
+    //cv::goodFeaturesToTrack(img, new_pts_, processor_config.max_features_num, 0.01, processor_config.min_distance);
 
     // Initialize last publish time
     last_pub_time = curr_img_ptr->timeStampToSec;
@@ -1032,8 +1143,32 @@ void ImageProcessor::findNewFeaturesToBeTracked() {
     // detect new features to be tracked
     vector<Point2f>().swap(new_pts_);
     if (processor_config.max_features_num-curr_pts_.size() > 0)
-        cv::goodFeaturesToTrack(curr_img, new_pts_, 
-            processor_config.max_features_num-curr_pts_.size(), 0.01, processor_config.min_distance, mask);
+    {
+        // cv::goodFeaturesToTrack(curr_img, new_pts_, 
+        //     processor_config.max_features_num-curr_pts_.size(), 0.01, processor_config.min_distance, mask);
+
+        // Prepare frame for detection
+        std::vector<cv::Mat> image_pyramid;
+        std::shared_ptr<Frame> frame0(new Frame(curr_pyramid_[0], 0, FRAME_IMAGE_PYRAMID_LEVELS));
+
+        // Perform detection on GPU
+        detector_gpu->reset();
+        detector_gpu->detect(frame0->pyramid_);
+
+        // Copy detected points to new_pts_ vector
+        auto & points_gpu = detector_gpu->getPoints();
+        auto & points_gpu_grid = detector_gpu->getGrid();
+        ROS_INFO_STREAM("Detected: " << points_gpu.size() << "points");
+        for(std::size_t i=0;i<points_gpu.size();++i)
+        {
+            if(!points_gpu_grid.isOccupied(i)) continue;
+
+            // Create Point2f object
+            Point2f feature((int)points_gpu[i].x_, (int)points_gpu[i].y_);
+
+            new_pts_.push_back(feature);
+        }
+    }
 }
 
 
