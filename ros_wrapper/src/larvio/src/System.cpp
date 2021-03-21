@@ -156,6 +156,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
         auto t2 = std::chrono::high_resolution_clock::now();
 
         ROS_INFO_STREAM("Image processing: " << ( t2 - t1 ).count()/1e9);
+        ROS_INFO_STREAM("bProcess: " << bProcess);
 
         // Filtering if get processed feature.
         bool bPubOdo = false;
@@ -195,6 +196,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
             auto t2 = std::chrono::high_resolution_clock::now();
 
             ROS_INFO_STREAM("Image processing: " << ( t2 - t1 ).count()/1e9);
+            ROS_INFO_STREAM("bProcess: " << bProcess);
 
             // Filtering if get processed feature.
             bool bPubOdo = false;

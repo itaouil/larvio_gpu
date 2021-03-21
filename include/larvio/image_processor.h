@@ -12,9 +12,6 @@
 #ifndef IMAGE_PROCESSOR_H
 #define IMAGE_PROCESSOR_H
 
-// ROS
-#include "ros/ros.h"
-
 // LARVIO
 #include "sensors/ImuData.hpp"
 #include <ORB/ORBDescriptor.h>
@@ -25,6 +22,7 @@
 #include <map>
 #include <vector>
 #include <fstream>
+#include <bits/stdc++.h>
 #include <boost/shared_ptr.hpp>
 
 // OpenCV
@@ -148,20 +146,22 @@ private:
       std::vector<cv::Point2f>& compenstated_pts);
 
   /*
-   * @brief setImageProperties
-   *    Sets image properties consisting of both the
-   *    width as well as the height for the vilib library
-   *    to be able to process the image
-   */
-  bool setImageProperties();
-
-  /*
    * @brief initializeVilib
    *    Initialize the feature detector and tracker
    *    using the vilib libray to process the detection
    *    and tracking on the GPU.
    */
   bool initializeVilib();
+
+    /*
+   * @brief trackImage
+   *    Perform tracking on GPU using a detection
+   *    algorithm also no the GPU and the current image
+   * @param imu msg buffer
+   */
+    void trackImage(
+            const cv::Mat &img,
+            std::map<std::size_t, cv::Point2f> &points);
 
   /*
    * @brief initializeFirstFrame
@@ -177,17 +177,8 @@ private:
    *    stereo images.
    * @param imu msg buffer
    */
-  bool initializeFirstFeatures(
+  bool trackFirstFeatures(
           const std::vector<ImuData>& imu_msg_buffer);
-
-  /*
-   * @brief findNewFeaturesToBeTracked
-   *    Find new features in current image to be tracked,
-   *    until being tracked successfully in next image,
-   *    features found in this function would not be valid
-   *    features.
-   */
-  void findNewFeaturesToBeTracked();
 
   /*
    * @brief trackFeatures
@@ -195,11 +186,6 @@ private:
    */
   void trackFeatures();
 
-  /*
-   * @brief trackNewFeatures
-   *    Track new features extracted in last image.
-   */
-  void trackNewFeatures();
 
   /*
    * @brief publish
@@ -259,7 +245,6 @@ private:
       if (markers[i] == 0) continue;
       refined_vec.push_back(raw_vec[i]);
     }
-    return;
   }
 
   /*
@@ -305,11 +290,11 @@ private:
   cv::Vec4d cam_distortion_coeffs;
 
   // Take a vector from cam frame to the IMU frame.
-  cv::Matx33d R_cam_imu;  
-  cv::Vec3d t_cam_imu;    
+  cv::Matx33d R_cam_imu;
+  cv::Vec3d t_cam_imu;
 
   // Take a vector from prev cam frame to curr cam frame
-  cv::Matx33f R_Prev2Curr;  
+  cv::Matx33f R_Prev2Curr;
 
   // Previous and current images
   ImageDataPtr prev_img_ptr;
@@ -357,9 +342,23 @@ private:
   // flag for first useful image msg
   bool bFirstImg;
 
-  // Vilib members
+  // GPU detector and tracker
   std::shared_ptr<vilib::DetectorBaseGPU> detector_gpu;
   std::shared_ptr<vilib::FeatureTrackerBase> tracker_gpu;
+
+  // Tracked points on GPU
+  std::map<std::size_t, cv::Point2f> current_tracked_points;
+  std::map<std::size_t, cv::Point2f> previous_tracked_points;
+
+  // Lifetime and initial point for tracked points
+  std::map<std::size_t, cv::Point2f> points_initial;
+  std::map<std::size_t, int> tracked_points_lifetime;
+
+  // Active feature ids
+  std::vector<std::size_t> active_ids;
+
+  // New detected points on GPU to be integrated
+  std::map<std::size_t, cv::Point2f> new_tracked_points;
 };
 
 typedef ImageProcessor::Ptr ImageProcessorPtr;
