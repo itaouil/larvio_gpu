@@ -350,7 +350,7 @@ bool ImageProcessor::initializeVilib() {
     l_feature_tracker_options.affine_est_offset = false;
     l_feature_tracker_options.use_best_n_features = 100;
     l_feature_tracker_options.reset_before_detection = false;
-    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.7 * l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.6 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -472,17 +472,15 @@ bool ImageProcessor::trackFirstFeatures(
     // Clear previous points which are not
     // being tracked anymore (i.e. dead features)
     // and their respective lifetimes and initial points
-    for (auto &point: previous_tracked_points)
-    {
-        printf("point.first %lu\n", point.first);
-        if (current_tracked_points.find(point.first) != current_tracked_points.end())
-        {
-            printf("Found point first");
-            //previous_tracked_points.erase(point.first);
-        }
-    }
-
-    printf("Tracking first features calledhh...\n");
+//    for (auto &point: previous_tracked_points)
+//    {
+//        printf("point.first %lu\n", point.first);
+//        if (current_tracked_points.find(point.first) != current_tracked_points.end())
+//        {
+//            printf("Found point first");
+//            //previous_tracked_points.erase(point.first);
+//        }
+//    }
 
     // Previous and current points which have been
     // tracked through two consecutive images
@@ -741,6 +739,8 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
     bool prev_is_last = prev_img_time==last_pub_time;
     double dt_2 = (prev_is_last ? dt_1 : prev_img_time-last_pub_time);
 
+    printf("Points id size feature message: %zu\n", pts_ids_.size());
+
     for (int i = 0; i < pts_ids_.size(); ++i) {
         feature_msg_ptr->features.push_back(MonoFeatureMeasurement());
         feature_msg_ptr->features[i].id = pts_ids_[i];
@@ -770,6 +770,16 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
                         (prev_points_undistorted[i].y-init_points_undistorted[i].y)/dt_2;
             }
         }
+
+        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
+        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
+        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
+        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
+        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
+        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
+        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
+        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
+        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
     }
 
     printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
