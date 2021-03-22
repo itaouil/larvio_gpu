@@ -161,7 +161,7 @@ private:
    */
     void trackImage(
             const cv::Mat &img,
-            std::map<std::size_t, cv::Point2f> &points);
+            std::map<int, cv::Point2f> &points);
 
   /*
    * @brief initializeFirstFrame
@@ -347,18 +347,18 @@ private:
   std::shared_ptr<vilib::FeatureTrackerBase> tracker_gpu;
 
   // Tracked points on GPU
-  std::map<std::size_t, cv::Point2f> current_tracked_points;
-  std::map<std::size_t, cv::Point2f> previous_tracked_points;
+  std::map<int, cv::Point2f> current_tracked_points;
+  std::map<int, cv::Point2f> previous_tracked_points;
 
   // Lifetime and initial point for tracked points
-  std::map<std::size_t, cv::Point2f> points_initial;
-  std::map<std::size_t, int> tracked_points_lifetime;
+  std::map<int, cv::Point2f> points_initial;
+  std::map<int, int> tracked_points_lifetime;
 
   // Active feature ids
-  std::vector<std::size_t> active_ids;
+  std::vector<int> active_ids;
 
   // New detected points on GPU to be integrated
-  std::map<std::size_t, cv::Point2f> new_tracked_points;
+  std::map<int, cv::Point2f> new_tracked_points;
 };
 
 typedef ImageProcessor::Ptr ImageProcessorPtr;

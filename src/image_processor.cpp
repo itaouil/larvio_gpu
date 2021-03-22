@@ -397,7 +397,7 @@ bool ImageProcessor::initializeVilib() {
 
 void ImageProcessor::trackImage(
         const cv::Mat &img,
-        std::map<std::size_t, cv::Point2f> &points) {
+        std::map<int, cv::Point2f> &points) {
     // Tracking variables
     std::size_t l_total_tracked_ftr_cnt, l_total_detected_ftr_cnt;
 
@@ -466,8 +466,8 @@ bool ImageProcessor::trackFirstFeatures(
     const Mat& img = curr_img_ptr->image;
     trackImage(img, current_tracked_points);
 
-    printf("previous_tracked_points size %d\n", previous_tracked_points.size());
-    printf("current_tracked_points size %d\n", current_tracked_points.size());
+    printf("previous_tracked_points size %lu\n", previous_tracked_points.size());
+    printf("current_tracked_points size %lu\n", current_tracked_points.size());
 
     // Clear previous points which are not
     // being tracked anymore (i.e. dead features)
@@ -477,7 +477,8 @@ bool ImageProcessor::trackFirstFeatures(
         printf("point.first %lu\n", point.first);
         if (current_tracked_points.find(point.first) != current_tracked_points.end())
         {
-            previous_tracked_points.erase(point.first);
+            printf("Found point first");
+            //previous_tracked_points.erase(point.first);
         }
     }
 
@@ -595,15 +596,15 @@ void ImageProcessor::trackFeatures() {
     // Clear previous points which are not
     // being tracked anymore (i.e. dead features)
     // and their respective lifetimes and initial points
-    for (auto &point: previous_tracked_points)
-    {
-        if (current_tracked_points.find(point.first) != current_tracked_points.end())
-        {
-            points_initial.erase(point.first);
-            tracked_points_lifetime.erase(point.first);
-            previous_tracked_points.erase(point.first);
-        }
-    }
+//    for (auto &point: previous_tracked_points)
+//    {
+//        if (current_tracked_points.find(point.first) != current_tracked_points.end())
+//        {
+//            points_initial.erase(point.first);
+//            tracked_points_lifetime.erase(point.first);
+//            previous_tracked_points.erase(point.first);
+//        }
+//    }
 
     printf("%zu previous_tracked_points size after cleaning\n", previous_tracked_points.size());
 
@@ -770,6 +771,8 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
             }
         }
     }
+
+    printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
 }
 
 
