@@ -1124,7 +1124,19 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
                         (prev_points_undistorted[i].y-init_points_undistorted[i].y)/dt_2;
             }
         }
+
+        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
+        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
+        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
+        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
+        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
+        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
+        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
+        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
+        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
     }
+
+    printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
 }
 
 

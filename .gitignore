@@ -11,6 +11,8 @@ ros_wrapper/.catkin_workspace
 # Created by https://www.toptal.com/developers/gitignore/api/cmake,c++,python,linux,clion,visualstudiocode,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=cmake,c++,python,linux,clion,visualstudiocode,macos
 
+.catkin_tools/*
+
 .idea
 ros_wrapper/.catkin_tools/
 ros_wrapper/logs

@@ -46,7 +46,7 @@ fast_threshold: 30
 max_iteration: 30
 track_precision: 0.01
 ransac_threshold: 1
-max_features_num: 230
+max_features_num: 100
 min_distance: 15
 flag_equalize: 1    # 0(false) or 1(true)
 pub_frequency: 35
