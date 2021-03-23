@@ -371,6 +371,8 @@ bool LarVio::processFeatures(MonoCameraMeasurementPtr msg,
           return false;
   }
 
+  printf("Gravity vector not yet set...");
+
   // Return if the gravity vector has not been set.
   if (!is_gravity_set) {
       if (flexInitPtr->tryIncInit(imu_msg_buffer, msg,
@@ -386,9 +388,12 @@ bool LarVio::processFeatures(MonoCameraMeasurementPtr msg,
         state_server.imu_state_FEJ_now = state_server.imu_state;
         // debug log
         fTakeOffStamp << fixed << setprecision(9) << take_off_stamp << endl;
-      } else
+      }
+      else
         return false;		
   }
+
+    printf("Gravity vector set...");
 
   // Propogate the IMU state.
   // that are received before the image msg.

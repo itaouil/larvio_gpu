@@ -5,7 +5,7 @@
 
   <!-- System Manager Nodelet  -->
   <group ns="$(arg robot)">
-    <node pkg="nodelet" type="nodelet" name="system" args='standalone larvio/SystemNodelet' output="log">
+    <node launch-prefix="gdb -ex run --args" pkg="nodelet" type="nodelet" name="system" args='standalone larvio/SystemNodelet' output="screen">
 
       <param name="fixed_frame_id" value="$(arg fixed_frame_id)"/>
       <param name="child_frame_id" value="odom"/>

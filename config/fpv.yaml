@@ -4,9 +4,9 @@
 output_dir: "/home/itaouil/datasets/VIO/FPV/"
 
 # switches
-if_FEJ: 1    # 0(false) or 1(true)
-estimate_extrin: 1    # 0(false) or 1(true)
-estimate_td: 1    # 0(false) or 1(true)
+if_FEJ: 0    # 0(false) or 1(true)
+estimate_extrin: 0    # 0(false) or 1(true)
+estimate_td: 0    # 0(false) or 1(true)
 calib_imu_instrinsic: 0    # 0(false) or 1(true)
 
 # camera instrinsic
@@ -46,7 +46,7 @@ fast_threshold: 30
 max_iteration: 30
 track_precision: 0.01
 ransac_threshold: 1
-max_features_num: 230
+max_features_num: 100
 min_distance: 15
 flag_equalize: 1    # 0(false) or 1(true)
 pub_frequency: 35

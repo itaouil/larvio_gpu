@@ -41,6 +41,34 @@
 #include "vilib/feature_tracker/feature_tracker_base.h"
 #include "vilib/feature_tracker/feature_tracker_options.h"
 
+// Vilib Parameters
+
+// Frame options
+#define FRAME_IMAGE_PYRAMID_LEVELS 5
+
+// Feature detection options
+#define FEATURE_DETECTOR_MIN_LEVEL 0
+#define FEATURE_DETECTOR_MAX_LEVEL 2
+#define FEATURE_DETECTOR_VERTICAL_BORDER 8
+#define FEATURE_DETECTOR_HORIZONTAL_BORDER 8
+#define FEATURE_DETECTOR_CELL_SIZE_WIDTH 32
+#define FEATURE_DETECTOR_CELL_SIZE_HEIGHT 32
+
+// Feature detector selection
+#define FEATURE_DETECTOR_FAST 0
+#define FEATURE_DETECTOR_HARRIS 1
+#define FEATURE_DETECTOR_SHI_TOMASI 2
+#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_FAST
+
+// FAST parameters
+#define FEATURE_DETECTOR_FAST_EPISLON 20.f
+#define FEATURE_DETECTOR_FAST_ARC_LENGTH 15
+#define FEATURE_DETECTOR_FAST_SCORE SUM_OF_ABS_DIFF_ON_ARC
+
+// Harris/Shi-Tomasi parameters
+#define FEATURE_DETECTOR_HARRIS_K 0.04f
+#define FEATURE_DETECTOR_HARRIS_QUALITY_LEVEL 0.01f
+#define FEATURE_DETECTOR_HARRIS_BORDER_TYPE conv_filter_border_type::BORDER_SKIP
 
 namespace larvio {
 
@@ -110,6 +138,11 @@ private:
   typedef unsigned long long int FeatureIDType;
 
   /*
+   * @brief MapType An alias for map<FeatureIDType, cv::Point2f>
+   */
+  typedef std::map<FeatureIDType, cv::Point2f> MapType;
+
+  /*
    * @brief loadParameters
    *    Load parameters from the parameter server.
    */
@@ -153,6 +186,14 @@ private:
    */
   bool initializeVilib();
 
+  /*
+   * @brief clearDeadFeatures
+   *    Clear dead features and relative information,
+   *    where a dead feature is one that was not tracked
+   *    in the next frame.
+   */
+  void clearDeadFeatures();
+
     /*
    * @brief trackImage
    *    Perform tracking on GPU using a detection
@@ -161,7 +202,7 @@ private:
    */
     void trackImage(
             const cv::Mat &img,
-            std::map<int, cv::Point2f> &points);
+            std::map<FeatureIDType, cv::Point2f> &points);
 
   /*
    * @brief initializeFirstFrame
@@ -335,9 +376,9 @@ private:
   std::string output_dir;
 
   // ORB descriptor pointer, added by QXC
+  std::vector<cv::Mat> vOrbDescriptors;
   boost::shared_ptr<ORBdescriptor> prevORBDescriptor_ptr;
   boost::shared_ptr<ORBdescriptor> currORBDescriptor_ptr;
-  std::vector<cv::Mat> vOrbDescriptors;
 
   // flag for first useful image msg
   bool bFirstImg;
@@ -347,18 +388,12 @@ private:
   std::shared_ptr<vilib::FeatureTrackerBase> tracker_gpu;
 
   // Tracked points on GPU
-  std::map<int, cv::Point2f> current_tracked_points;
-  std::map<int, cv::Point2f> previous_tracked_points;
+  std::map<FeatureIDType, cv::Point2f> current_tracked_points_map;
+  std::map<FeatureIDType, cv::Point2f> previous_tracked_points_map;
 
   // Lifetime and initial point for tracked points
-  std::map<int, cv::Point2f> points_initial;
-  std::map<int, int> tracked_points_lifetime;
-
-  // Active feature ids
-  std::vector<int> active_ids;
-
-  // New detected points on GPU to be integrated
-  std::map<int, cv::Point2f> new_tracked_points;
+  std::map<FeatureIDType, int> tracked_points_lifetime_map;
+  std::map<FeatureIDType, cv::Point2f> tracked_points_initial_map;
 };
 
 typedef ImageProcessor::Ptr ImageProcessorPtr;

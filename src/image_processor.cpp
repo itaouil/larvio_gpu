@@ -23,46 +23,12 @@
 // OpenCV
 #include <opencv2/core/utility.hpp>
 
-// Frame options
-#define FRAME_IMAGE_PYRAMID_LEVELS 5
-
-// Feature detection options
-#define FEATURE_DETECTOR_MIN_LEVEL 0
-#define FEATURE_DETECTOR_MAX_LEVEL 2
-#define FEATURE_DETECTOR_VERTICAL_BORDER 8
-#define FEATURE_DETECTOR_HORIZONTAL_BORDER 8
-#define FEATURE_DETECTOR_CELL_SIZE_WIDTH 32
-#define FEATURE_DETECTOR_CELL_SIZE_HEIGHT 32
-
-// Feature detector selection
-#define FEATURE_DETECTOR_FAST 0
-#define FEATURE_DETECTOR_HARRIS 1
-#define FEATURE_DETECTOR_SHI_TOMASI 2
-#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_FAST
-
-// FAST parameters
-#define FEATURE_DETECTOR_FAST_EPISLON 20.f
-#define FEATURE_DETECTOR_FAST_ARC_LENGTH 15
-#define FEATURE_DETECTOR_FAST_SCORE SUM_OF_ABS_DIFF_ON_ARC
-
-// Harris/Shi-Tomasi parameters
-#define FEATURE_DETECTOR_HARRIS_K 0.04f
-#define FEATURE_DETECTOR_HARRIS_QUALITY_LEVEL 0.01f
-#define FEATURE_DETECTOR_HARRIS_BORDER_TYPE conv_filter_border_type::BORDER_SKIP
-
-// Test framework options
-#define SAVE_FEATURES_IMAGE 0
-#define DISPLAY_FEATURES_IMAGE 0
-#define PUBLISH_FEATURES_IMAGE 1
-#define VISUALIZE_FEATURE_TRACKING 1
-
 using namespace cv;
 using namespace std;
 using namespace vilib;
 using namespace Eigen;
 
 namespace larvio {
-
 
 ImageProcessor::ImageProcessor(std::string& config_file_) :
         config_file(config_file_) {
@@ -204,6 +170,9 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
             image_state = OTHER_IMAGES;
         }
     } else if ( OTHER_IMAGES==image_state ) {
+        // Integrate gyro data to get a guess of rotation between current and previous image
+        integrateImuData(R_Prev2Curr, imu_msg_buffer);
+
         // Tracking features
         trackFeatures();
 
@@ -348,9 +317,9 @@ bool ImageProcessor::initializeVilib() {
     FeatureTrackerOptions l_feature_tracker_options;
     l_feature_tracker_options.affine_est_gain = false;
     l_feature_tracker_options.affine_est_offset = false;
-    l_feature_tracker_options.use_best_n_features = 100;
     l_feature_tracker_options.reset_before_detection = false;
-    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.6 * l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
+    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.9 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -397,7 +366,7 @@ bool ImageProcessor::initializeVilib() {
 
 void ImageProcessor::trackImage(
         const cv::Mat &img,
-        std::map<int, cv::Point2f> &points) {
+        std::map<FeatureIDType, cv::Point2f> &points) {
     // Tracking variables
     std::size_t l_total_tracked_ftr_cnt, l_total_detected_ftr_cnt;
 
@@ -421,7 +390,33 @@ void ImageProcessor::trackImage(
     // Populate hashmap where the key is the feature id
     // and the value the (x,y) coordinate point of the feature
     for (std::size_t i = 0; i < l_frame->num_features_; ++i)
+    {
+        //printf("Track ID: %d\n", l_frame->track_id_vec_[i]);
         points[l_frame->track_id_vec_[i]] = cv::Point2f((int)l_frame->px_vec_.col(i)[0], (int)l_frame->px_vec_.col(i)[1]);
+    }
+}
+
+
+void ImageProcessor::clearDeadFeatures() {
+    // IDs of inactive features
+    std::vector<FeatureIDType> inactive_feature_ids;
+
+    // Check which features are dead
+    for (const auto& point: previous_tracked_points_map)
+    {
+        if (current_tracked_points_map.find(point.first) == current_tracked_points_map.end())
+        {
+            inactive_feature_ids.push_back(point.first);
+        }
+    }
+
+    // Clear dead features info
+    for (auto id: inactive_feature_ids)
+    {
+        tracked_points_initial_map.erase(id);
+        tracked_points_lifetime_map.erase(id);
+        previous_tracked_points_map.erase(id);
+    }
 }
 
 
@@ -434,14 +429,14 @@ bool ImageProcessor::initializeFirstFrame() {
     // The tracking call for this first stage only
     // consists of detecting new features from the
     // very first image received
-    trackImage(img, current_tracked_points);
+    trackImage(img, current_tracked_points_map);
 
-    printf("Newly detected points size %zu\n", current_tracked_points.size());
+    printf("Newly detected points size %zu\n", current_tracked_points_map.size());
 
     // Initialize last publish time
     last_pub_time = curr_img_ptr->timeStampToSec;
 
-    if (current_tracked_points.size()>20)
+    if (current_tracked_points_map.size()>20)
         return true;
     else
         return false;
@@ -450,37 +445,23 @@ bool ImageProcessor::initializeFirstFrame() {
 
 bool ImageProcessor::trackFirstFeatures(
         const std::vector<ImuData>& imu_msg_buffer) {
-    printf("Tracking first features called...\n");
+
+    // Integrate gyro data to get a guess of rotation between current and previous image
+    integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
     //TODO: IMU pre-integration
 
-    // Clear active feature ids
-    active_ids.clear();
+    // IDs of active features tracked
+    std::vector<int> active_ids_inlier;
 
     // Current tracked features till now
     // become the previous tracked features
-    previous_tracked_points.clear();
-    current_tracked_points.swap(previous_tracked_points);
+    previous_tracked_points_map.clear();
+    current_tracked_points_map.swap(previous_tracked_points_map);
 
     // Track previous points on new image
     const Mat& img = curr_img_ptr->image;
-    trackImage(img, current_tracked_points);
-
-    printf("previous_tracked_points size %lu\n", previous_tracked_points.size());
-    printf("current_tracked_points size %lu\n", current_tracked_points.size());
-
-    // Clear previous points which are not
-    // being tracked anymore (i.e. dead features)
-    // and their respective lifetimes and initial points
-//    for (auto &point: previous_tracked_points)
-//    {
-//        printf("point.first %lu\n", point.first);
-//        if (current_tracked_points.find(point.first) != current_tracked_points.end())
-//        {
-//            printf("Found point first");
-//            //previous_tracked_points.erase(point.first);
-//        }
-//    }
+    trackImage(img, current_tracked_points_map);
 
     // Previous and current points which have been
     // tracked through two consecutive images
@@ -490,20 +471,25 @@ bool ImageProcessor::trackFirstFeatures(
     // Filter currently tracked points between
     // inliers and newly detected points and initialize
     // their lifetime and initial point
-    for (auto &point: current_tracked_points)
+    for (auto it : current_tracked_points_map)
     {
         // Tracked point
-        if (previous_tracked_points.find(point.first) != previous_tracked_points.end())
+        if (previous_tracked_points_map.find(it.first) != previous_tracked_points_map.end())
         {
-            // Mark point as active (i.e. used by the estimator)
-            active_ids.push_back(point.first);
+            // Make sure tracked point is within image region
+            if (it.second.y < 0 || it.second.y > curr_img_ptr->image.rows-1 ||
+                it.second.x < 0 || it.second.x > curr_img_ptr->image.cols-1)
+                continue;
+
+            // Mark point as active
+            active_ids_inlier.push_back(it.first);
 
             // Tracked point initial lifetime
-            tracked_points_lifetime[point.first] = 2;
+            tracked_points_lifetime_map[it.first] = 2;
 
             // Tracked point in previous and current frame
-            cv::Point2f current_point = point.second;
-            cv::Point2f previous_point = previous_tracked_points[point.first];
+            cv::Point2f current_point = it.second;
+            cv::Point2f previous_point = previous_tracked_points_map[it.first];
 
             // Populate inlier vectors
             current_tracked_points_inlier.push_back(current_point);
@@ -513,12 +499,14 @@ bool ImageProcessor::trackFirstFeatures(
         else
         {
             // Newly detected point lifetime
-            tracked_points_lifetime[point.first] = 1;
+            tracked_points_lifetime_map[it.first] = 1;
         }
 
         // Initial points (required by the estimator)
-        points_initial[point.first] = cv::Point2f(-1, -1);
+        tracked_points_initial_map[it.first] = cv::Point2f(-1, -1);
     }
+
+    //TODO: refine points using ORB descriptor distance
 
     // Undistorted inlier tracked points
     vector<Point2f> prev_unpts_inlier(current_tracked_points_inlier.size());
@@ -532,9 +520,24 @@ bool ImageProcessor::trackFirstFeatures(
             cam_distortion_coeffs, curr_unpts_inlier,
             cv::Matx33d::eye(), cam_intrinsics);
 
-    //TODO: refine points using ORB descriptor distance
+    // Compute RANSAC inliers
+    vector<unsigned char> ransac_inliers;
+    findFundamentalMat(prev_unpts_inlier, curr_unpts_inlier,cv::FM_RANSAC,1.0,0.99, ransac_inliers);
 
-    //TODO: further refine points using RANSAC
+    // Refine points with RANSAC
+    vector<int> active_ids_matched(0);
+    vector<Point2f> prev_pts_matched(0);
+    vector<Point2f> curr_pts_matched(0);
+    removeUnmarkedElements(active_ids_inlier, ransac_inliers, active_ids_matched);
+    removeUnmarkedElements(previous_tracked_points_inlier, ransac_inliers,prev_pts_matched);
+    removeUnmarkedElements(current_tracked_points_inlier, ransac_inliers, curr_pts_matched);
+
+    // Features initialized failed if less than 20 inliers are tracked
+    if (curr_pts_matched.size() < 20)
+    {
+        printf("Not enough features after RANSAC1...");
+        return false;
+    }
 
     // Clear vectors
     vector<Point2f>().swap(prev_pts_);
@@ -543,68 +546,56 @@ bool ImageProcessor::trackFirstFeatures(
     vector<Point2f>().swap(init_pts_);
     vector<FeatureIDType>().swap(pts_ids_);
 
+    printf("Points inserted: %zu\n", prev_pts_matched.size());
+    printf("Points inserted: %zu\n", curr_pts_matched.size());
+    printf("IDs inserted: %zu\n", active_ids_matched.size());
+
     // Fill current and previous undistorted points
-    for (int i = 0; i < prev_unpts_inlier.size(); ++i) {
-        prev_pts_.push_back(prev_unpts_inlier[i]);
-        curr_pts_.push_back(curr_unpts_inlier[i]);
+    for (int i = 0; i < prev_pts_matched.size(); ++i) {
+        prev_pts_.push_back(prev_pts_matched[i]);
+        curr_pts_.push_back(curr_pts_matched[i]);
     }
 
     // Fill respective lifetime, initial pts and ids of tracked point
-    for (auto id: active_ids) {
+    for (auto id: active_ids_matched) {
         pts_ids_.push_back(id);
-        init_pts_.emplace_back(points_initial[id]);
-        pts_lifetime_.push_back(tracked_points_lifetime[id]);
+        init_pts_.emplace_back(tracked_points_initial_map[id]);
+        pts_lifetime_.push_back(tracked_points_lifetime_map[id]);
     }
+
+    printf("Features after initial tracking: %zu\n", prev_pts_.size());
 
     return true;
 }
 
 
 void ImageProcessor::trackFeatures() {
-//    // Number of the features before tracking.
-//    before_tracking = prev_pts_.size();
-//
-//    // Abort tracking if there is no features in
-//    // the previous frame.
-//    if (0 == before_tracking) {
-//        printf("No feature in prev img !\n");
-//        return;
-//    }
+    // Number of the features before tracking.
+    before_tracking = prev_pts_.size();
 
-    printf("Tracking features...\n");
-
-    // Clear active feature ids
-    active_ids.clear();
-
-    // Current tracked features till now
-    // become the previous tracked features
-    previous_tracked_points.clear();
-    current_tracked_points.swap(previous_tracked_points);
-
-    printf("%zu previous_tracked_points size\n", previous_tracked_points.size());
-
-    // Track previous points on new image
-    const Mat& img = curr_img_ptr->image;
-    trackImage(img, current_tracked_points);
-
-    printf("%zu current_tracked_points size\n", current_tracked_points.size());
+    // Abort tracking if there is no
+    // features in the previous frame.
+    if (0 == before_tracking) {
+        printf("No feature in prev img !\n");
+        return;
+    }
 
     //TODO: IMU pre-integration
 
-    // Clear previous points which are not
-    // being tracked anymore (i.e. dead features)
-    // and their respective lifetimes and initial points
-//    for (auto &point: previous_tracked_points)
-//    {
-//        if (current_tracked_points.find(point.first) != current_tracked_points.end())
-//        {
-//            points_initial.erase(point.first);
-//            tracked_points_lifetime.erase(point.first);
-//            previous_tracked_points.erase(point.first);
-//        }
-//    }
+    // IDs of active features tracked
+    std::vector<int> active_ids_inlier;
 
-    printf("%zu previous_tracked_points size after cleaning\n", previous_tracked_points.size());
+    // Current tracked features till now
+    // become the previous tracked features
+    previous_tracked_points_map.clear();
+    current_tracked_points_map.swap(previous_tracked_points_map);
+
+    // Track previous points on new image
+    const Mat& img = curr_img_ptr->image;
+    trackImage(img, current_tracked_points_map);
+
+    // Remove dead features
+    clearDeadFeatures();
 
     // Previous and current points which have been
     // tracked through two consecutive images
@@ -614,36 +605,54 @@ void ImageProcessor::trackFeatures() {
     // Filter currently tracked points between
     // inliers and newly detected points and initialize
     // their lifetime and initial point
-    for (auto &point: current_tracked_points)
+    for (auto it : current_tracked_points_map)
     {
         // Tracked point
-        if (previous_tracked_points.find(point.first) != previous_tracked_points.end())
+        if (previous_tracked_points_map.find(it.first) != previous_tracked_points_map.end())
         {
-            active_ids.push_back(point.first);
+            // Make sure tracked point is within image region\
+            if (it.second.y < 0 || it.second.y > curr_img_ptr->image.rows-1 ||
+                it.second.x < 0 || it.second.x > curr_img_ptr->image.cols-1)
+                continue;
+
+            active_ids_inlier.push_back(it.first);
 
             // Corresponding points in tracking process
-            cv::Point2f current_point = point.second;
-            cv::Point2f previous_point = previous_tracked_points[point.first];
+            cv::Point2f current_point = it.second;
+            cv::Point2f previous_point = previous_tracked_points_map[it.first];
 
             // Populate inliers
             current_tracked_points_inlier.push_back(current_point);
             previous_tracked_points_inlier.push_back(previous_point);
 
             // Tracked point lifetime
-            tracked_points_lifetime[point.first] += 1;
+            tracked_points_lifetime_map[it.first] += 1;
         }
         // Newly detected point
         else
         {
             // Newly detected point lifetime
-            tracked_points_lifetime[point.first] = 1;
+            tracked_points_lifetime_map[it.first] = 1;
         }
 
         // Initial points (required by the estimator)
-        points_initial[point.first] = previous_tracked_points[point.first];
+        tracked_points_initial_map[it.first] = previous_tracked_points_map[it.first];
     }
 
-    printf("%zu current_tracked_points_inlier size\n", current_tracked_points_inlier.size());
+    // Number of features left after tracking.
+    after_tracking = current_tracked_points_inlier.size();
+
+    // debug log
+    if (0 == after_tracking) {
+        printf("No feature is tracked !");
+        vector<Point2f>().swap(prev_pts_);
+        vector<Point2f>().swap(curr_pts_);
+        vector<FeatureIDType>().swap(pts_ids_);
+        vector<int>().swap(pts_lifetime_);
+        vector<Point2f>().swap(init_pts_);
+        vector<Mat>().swap(vOrbDescriptors);
+        return;
+    }
 
     // Undistorted points
     vector<Point2f> prev_unpts_inlier(current_tracked_points_inlier.size());
@@ -657,6 +666,23 @@ void ImageProcessor::trackFeatures() {
             cam_distortion_coeffs, curr_unpts_inlier,
             cv::Matx33d::eye(), cam_intrinsics);
 
+    // Compute RANSAC inliers
+    vector<unsigned char> ransac_inliers;
+    findFundamentalMat(prev_unpts_inlier, curr_unpts_inlier, cv::FM_RANSAC, 1.0, 0.99, ransac_inliers);
+
+    vector<int> active_ids_matched(0);
+    vector<Point2f> prev_pts_matched(0);
+    vector<Point2f> curr_pts_matched(0);
+    removeUnmarkedElements(active_ids_inlier, ransac_inliers, active_ids_matched);
+    removeUnmarkedElements(previous_tracked_points_inlier, ransac_inliers,prev_pts_matched);
+    removeUnmarkedElements(current_tracked_points_inlier, ransac_inliers, curr_pts_matched);
+
+    // Features initialized failed if less than 20 inliers are tracked
+    if (curr_pts_matched.size() < 20)
+    {
+        printf("No feature survive after RANSAC2: %zu\n", curr_pts_matched.size());
+    }
+
     // Clear vectors
     vector<Point2f>().swap(prev_pts_);
     vector<Point2f>().swap(curr_pts_);
@@ -666,18 +692,18 @@ void ImageProcessor::trackFeatures() {
 
     // Fill current and previous undistorted points
     for (int i = 0; i < prev_unpts_inlier.size(); ++i) {
-        prev_pts_.push_back(prev_unpts_inlier[i]);
-        curr_pts_.push_back(curr_unpts_inlier[i]);
+        prev_pts_.push_back(prev_pts_matched[i]);
+        curr_pts_.push_back(curr_pts_matched[i]);
     }
 
     // Fill respective lifetime, initial pts and ids of tracked point
-    for (auto id: active_ids) {
+    for (auto id: active_ids_matched) {
         pts_ids_.push_back(id);
-        init_pts_.emplace_back(points_initial[id]);
-        pts_lifetime_.push_back(tracked_points_lifetime[id]);
+        init_pts_.emplace_back(tracked_points_initial_map[id]);
+        pts_lifetime_.push_back(tracked_points_lifetime_map[id]);
     }
 
-    printf("%zu Prev points size after tracking\n", prev_pts_.size());
+    printf("Features after tracking: %zu\n", prev_pts_.size());
 }
 
 
@@ -722,7 +748,7 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
 
     vector<Point2f> curr_points_undistorted(0);
     vector<Point2f> init_points_undistorted(0);     
-    vector<Point2f> prev_points_undistorted(0);     
+    vector<Point2f> prev_points_undistorted(0);
 
     undistortPoints(
             curr_pts_, cam_intrinsics, cam_distortion_model,
@@ -771,15 +797,15 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
             }
         }
 
-        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
-        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
-        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
-        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
-        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
-        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
-        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
-        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
-        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
+//        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
+//        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
+//        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
+//        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
+//        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
+//        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
+//        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
+//        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
+//        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
     }
 
     printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
@@ -803,10 +829,6 @@ void ImageProcessor::publish() {
     map<FeatureIDType, Point2f> prev_points;
     map<FeatureIDType, Point2f> curr_points;
     map<FeatureIDType, int> points_lifetime;
-
-    printf("%zu Point ids size\n", pts_ids_.size());
-    printf("%zu Prev points size\n", prev_pts_.size());
-    printf("%zu Curr points size\n", curr_pts_.size());
 
     for (int i = 0; i < pts_ids_.size(); i++) {
         prev_points[pts_ids_[i]] = prev_pts_[i];
