@@ -57,7 +57,7 @@ bool ImageProcessor::loadParameters() {
 
     processor_config.max_features_num = fsSettings["max_features_num"];
     processor_config.min_distance = fsSettings["min_distance"];
-    processor_config.flag_equalize = (static_cast<int>(fsSettings["flag_equalize"]) ? true : false);
+    processor_config.flag_equalize = static_cast<int>(fsSettings["flag_equalize"]) != 0;
 
     processor_config.pub_frequency = fsSettings["pub_frequency"];
     processor_config.img_rate = fsSettings["img_rate"];
@@ -181,7 +181,7 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
         }
     } else if ( OTHER_IMAGES==image_state ) {
         // Integrate gyro data to get a guess of rotation between current and previous image
-        integrateImuData(R_Prev2Curr, imu_msg_buffer);
+//        integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
         // Tracking features
         trackFeatures();
@@ -356,12 +356,12 @@ bool ImageProcessor::initializeFirstFeatures(
         const std::vector<ImuData>& imu_msg_buffer) {
 
     // Integrate gyro data to get a guess of ratation between current and previous image
-    integrateImuData(R_Prev2Curr, imu_msg_buffer);
+//    integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
     // Pridict features in current image
     vector<Point2f> curr_pts(0);
-    predictFeatureTracking(
-        new_pts_, R_Prev2Curr, cam_intrinsics, curr_pts);
+//    predictFeatureTracking(
+//        new_pts_, R_Prev2Curr, cam_intrinsics, curr_pts);
 
     // Using LK optical flow to track feaures
     vector<unsigned char> track_inliers(new_pts_.size());
@@ -373,8 +373,8 @@ bool ImageProcessor::initializeFirstFeatures(
         processor_config.pyramid_levels,
         TermCriteria(TermCriteria::COUNT+TermCriteria::EPS,
             processor_config.max_iteration,
-            processor_config.track_precision),
-        cv::OPTFLOW_USE_INITIAL_FLOW);
+            processor_config.track_precision));
+//        cv::OPTFLOW_USE_INITIAL_FLOW);
 
     // Mark those tracked points out of the image region
     // as untracked.
@@ -412,6 +412,7 @@ bool ImageProcessor::initializeFirstFeatures(
             processor_config.max_iteration,
             processor_config.track_precision),
         cv::OPTFLOW_USE_INITIAL_FLOW);
+
     // Mark those tracked points out of the image region
     // as untracked.
     for (int i = 0; i < prev_pts_cpy.size(); ++i) {  
@@ -427,6 +428,7 @@ bool ImageProcessor::initializeFirstFeatures(
         if (dis > 1)    
             reverse_inliers[i] = 0;
     }
+
     // Remove outliers
     vector<Point2f> prev_pts_inImg(0);
     vector<Point2f> curr_pts_inImg(0);
@@ -434,67 +436,59 @@ bool ImageProcessor::initializeFirstFeatures(
             prev_pts_inImg_, reverse_inliers, prev_pts_inImg);
     removeUnmarkedElements(
             curr_pts_inImg_, reverse_inliers, curr_pts_inImg);
+
     // Return if not enough inliers
     if ( prev_pts_inImg.size()<20 )
         return false;
 
-    // Mark as outliers if descriptor distance is too large
-    vector<int> levels(prev_pts_inImg.size(), 0);
-    Mat prevDescriptors, currDescriptors;
-    if (!prevORBDescriptor_ptr->computeDescriptors(prev_pts_inImg, levels, prevDescriptors) ||
-        !currORBDescriptor_ptr->computeDescriptors(curr_pts_inImg, levels, currDescriptors)) {
-        cerr << "error happen while compute descriptors" << endl;
-        return false;
-    }
-    vector<int> vDis;
-    for (int j = 0; j < currDescriptors.rows; ++j) {
-        int dis = ORBdescriptor::computeDescriptorDistance(
-                prevDescriptors.row(j), currDescriptors.row(j));
-        vDis.push_back(dis);
-    }
-    vector<unsigned char> desc_inliers(prev_pts_inImg.size(), 0);
-    vector<Mat> desc_first(0);
-    for (int i = 0; i < prev_pts_inImg.size(); i++) {
-        if (vDis[i]<=58) {  
-            desc_inliers[i] = 1;
-            desc_first.push_back(prevDescriptors.row(i));
-        }
-    }
-
-    // Remove outliers
-    vector<Point2f> prev_pts_inlier(0);
-    vector<Point2f> curr_pts_inlier(0);
-    removeUnmarkedElements(   
-            prev_pts_inImg, desc_inliers, prev_pts_inlier);
-    removeUnmarkedElements(
-            curr_pts_inImg, desc_inliers, curr_pts_inlier);
-
-    // Return if not enough inliers
-    if ( prev_pts_inlier.size()<20 )
-        return false;
+//    // Mark as outliers if descriptor distance is too large
+//    vector<int> levels(prev_pts_inImg.size(), 0);
+//    Mat prevDescriptors, currDescriptors;
+//    if (!prevORBDescriptor_ptr->computeDescriptors(prev_pts_inImg, levels, prevDescriptors) ||
+//        !currORBDescriptor_ptr->computeDescriptors(curr_pts_inImg, levels, currDescriptors)) {
+//        cerr << "error happen while compute descriptors" << endl;
+//        return false;
+//    }
+//    vector<int> vDis;
+//    for (int j = 0; j < currDescriptors.rows; ++j) {
+//        int dis = ORBdescriptor::computeDescriptorDistance(
+//                prevDescriptors.row(j), currDescriptors.row(j));
+//        vDis.push_back(dis);
+//    }
+//    vector<unsigned char> desc_inliers(prev_pts_inImg.size(), 0);
+//    vector<Mat> desc_first(0);
+//    for (int i = 0; i < prev_pts_inImg.size(); i++) {
+//        if (vDis[i]<=58) {
+//            desc_inliers[i] = 1;
+//            desc_first.push_back(prevDescriptors.row(i));
+//        }
+//    }
+//
+//    // Remove outliers
+//    vector<Point2f> prev_pts_inlier(0);
+//    vector<Point2f> curr_pts_inlier(0);
+//    removeUnmarkedElements(
+//            prev_pts_inImg, desc_inliers, prev_pts_inlier);
+//    removeUnmarkedElements(
+//            curr_pts_inImg, desc_inliers, curr_pts_inlier);
+//
+//    // Return if not enough inliers
+//    if ( prev_pts_inlier.size()<20 )
+//        return false;
 
     // Undistort inliers
-    vector<Point2f> prev_unpts_inlier(prev_pts_inlier.size());
-    vector<Point2f> curr_unpts_inlier(curr_pts_inlier.size());
+    vector<Point2f> prev_unpts_inlier(prev_pts_inImg.size());
+    vector<Point2f> curr_unpts_inlier(curr_pts_inImg.size());
     undistortPoints(
-            prev_pts_inlier, cam_intrinsics, cam_distortion_model,
+            prev_pts_inImg, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, prev_unpts_inlier, 
             cv::Matx33d::eye(), cam_intrinsics);
     undistortPoints(
-            curr_pts_inlier, cam_intrinsics, cam_distortion_model,
+            curr_pts_inImg, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, curr_unpts_inlier, 
             cv::Matx33d::eye(), cam_intrinsics);
 
     vector<unsigned char> ransac_inliers;
-
-    float fx = cam_intrinsics[0];
-    float fy = cam_intrinsics[1];
-    float cx = cam_intrinsics[2];
-    float cy = cam_intrinsics[3];
-    Mat K = ( cv::Mat_<double> (3,3) << fx, 0, cx, 0, fy, cy, 0, 0, 1 );
-    // findEssentialMat(
-    //         prev_unpts_inlier, curr_unpts_inlier,
-    //         K, cv::RANSAC, 0.999, 1.0, ransac_inliers);
     findFundamentalMat(
             prev_unpts_inlier, curr_unpts_inlier,
             cv::FM_RANSAC, 1.0, 0.99, ransac_inliers);
@@ -503,11 +497,11 @@ bool ImageProcessor::initializeFirstFeatures(
     vector<Point2f> curr_pts_matched(0);
     vector<Mat> prev_desc_matched(0);
     removeUnmarkedElements(
-            prev_pts_inlier, ransac_inliers, prev_pts_matched);
+            prev_pts_inImg, ransac_inliers, prev_pts_matched);
     removeUnmarkedElements(
-            curr_pts_inlier, ransac_inliers, curr_pts_matched);
-    removeUnmarkedElements(
-            desc_first, ransac_inliers, prev_desc_matched);
+            curr_pts_inImg, ransac_inliers, curr_pts_matched);
+//    removeUnmarkedElements(
+//            desc_first, ransac_inliers, prev_desc_matched);
 
     // Features initialized failed if less than 20 inliers are tracked
     if ( curr_pts_matched.size()<20 )   
@@ -523,11 +517,11 @@ bool ImageProcessor::initializeFirstFeatures(
     vector<Mat>().swap(vOrbDescriptors);
     for (int i = 0; i < prev_pts_matched.size(); ++i) {
         prev_pts_.push_back(prev_pts_matched[i]);
-        init_pts_.push_back(Point2f(-1,-1));       
+        init_pts_.emplace_back(-1,-1);
         curr_pts_.push_back(curr_pts_matched[i]);
         pts_ids_.push_back(next_feature_id++);
         pts_lifetime_.push_back(2);
-        vOrbDescriptors.push_back(prev_desc_matched[i]);
+//        vOrbDescriptors.push_back(prev_desc_matched[i]);
     }
 
     // Clear new_pts_
@@ -550,8 +544,8 @@ void ImageProcessor::trackFeatures() {
 
     // Pridict features in current image
     vector<Point2f> curr_points(prev_pts_.size());
-    predictFeatureTracking(
-        prev_pts_, R_Prev2Curr, cam_intrinsics, curr_points);
+//    predictFeatureTracking(
+//        prev_pts_, R_Prev2Curr, cam_intrinsics, curr_points);
 
     // Using LK optical flow to track feaures
     vector<unsigned char> track_inliers(prev_pts_.size());
@@ -563,8 +557,8 @@ void ImageProcessor::trackFeatures() {
         processor_config.pyramid_levels,
         TermCriteria(TermCriteria::COUNT+TermCriteria::EPS,
             processor_config.max_iteration,
-            processor_config.track_precision),
-        cv::OPTFLOW_USE_INITIAL_FLOW);
+            processor_config.track_precision));
+//        cv::OPTFLOW_USE_INITIAL_FLOW);
 
     // Mark those tracked points out of the image region
     // as untracked.
@@ -625,6 +619,7 @@ void ImageProcessor::trackFeatures() {
             processor_config.max_iteration,
             processor_config.track_precision),
         cv::OPTFLOW_USE_INITIAL_FLOW);
+
     // Mark those tracked points out of the image region
     // as untracked.
     for (int i = 0; i < prev_pts_cpy.size(); ++i) {  
@@ -640,6 +635,7 @@ void ImageProcessor::trackFeatures() {
         if (dis > 1)    
             reverse_inliers[i] = 0;
     }
+
     // Remove outliers
     vector<FeatureIDType> prev_inImg_ids(0);
     vector<int> prev_inImg_lifetime(0);
@@ -659,6 +655,7 @@ void ImageProcessor::trackFeatures() {
             init_inImg_position_, reverse_inliers, init_inImg_position);
     removeUnmarkedElements(
             prev_imImg_desc_, reverse_inliers, prev_imImg_desc);
+
     // Number of features left after tracking.
     after_tracking = curr_inImg_points.size();
     // debug log
@@ -673,85 +670,76 @@ void ImageProcessor::trackFeatures() {
         return;
     }
 
-    // Mark as outliers if descriptor distance is too large
-    vector<int> levels(prev_inImg_points.size(), 0);
-    Mat prevDescriptors, currDescriptors;
-    if (!currORBDescriptor_ptr->computeDescriptors(curr_inImg_points, levels, currDescriptors)) {
-        cerr << "error happen while compute descriptors" << endl;
-        vector<Point2f>().swap(prev_pts_);
-        vector<Point2f>().swap(curr_pts_);
-        vector<FeatureIDType>().swap(pts_ids_);
-        vector<int>().swap(pts_lifetime_);
-        vector<Point2f>().swap(init_pts_);
-        vector<Mat>().swap(vOrbDescriptors);
-        return;
-    }
-    vector<int> vDis;
-    for (int j = 0; j < currDescriptors.rows; ++j) {
-        int dis = ORBdescriptor::computeDescriptorDistance(
-                prev_imImg_desc[j], currDescriptors.row(j));
-        vDis.push_back(dis);
-    }
-    vector<unsigned char> desc_inliers(prev_inImg_points.size(), 0);
-    for (int i = 0; i < prev_inImg_points.size(); i++) {
-        if (vDis[i]<=58)  
-            desc_inliers[i] = 1;
-    }
-
-    // Remove outliers
-    vector<FeatureIDType> prev_tracked_ids(0);
-    vector<int> prev_tracked_lifetime(0);
-    vector<Point2f> prev_tracked_points(0);
-    vector<Point2f> curr_tracked_points(0);
-    vector<Point2f> init_tracked_position(0);
-    vector<Mat> prev_tracked_desc(0);
-    removeUnmarkedElements(    
-            prev_inImg_ids, desc_inliers, prev_tracked_ids);
-    removeUnmarkedElements(
-            prev_inImg_lifetime, desc_inliers, prev_tracked_lifetime);
-    removeUnmarkedElements(
-            prev_inImg_points, desc_inliers, prev_tracked_points);
-    removeUnmarkedElements(
-            curr_inImg_points, desc_inliers, curr_tracked_points);
-    removeUnmarkedElements(
-            init_inImg_position, desc_inliers, init_tracked_position);
-    removeUnmarkedElements(
-            prev_imImg_desc, desc_inliers, prev_tracked_desc);
-
-    // Return if not enough inliers
-    if ( prev_tracked_points.size()==0 ){
-        printf("No feature is tracked after descriptor matching!\n");
-        vector<Point2f>().swap(prev_pts_);
-        vector<Point2f>().swap(curr_pts_);
-        vector<FeatureIDType>().swap(pts_ids_);
-        vector<int>().swap(pts_lifetime_);
-        vector<Point2f>().swap(init_pts_);
-        vector<Mat>().swap(vOrbDescriptors);
-        return;
-    }
+//    // Mark as outliers if descriptor distance is too large
+//    vector<int> levels(prev_inImg_points.size(), 0);
+//    Mat prevDescriptors, currDescriptors;
+//    if (!currORBDescriptor_ptr->computeDescriptors(curr_inImg_points, levels, currDescriptors)) {
+//        cerr << "error happen while compute descriptors" << endl;
+//        vector<Point2f>().swap(prev_pts_);
+//        vector<Point2f>().swap(curr_pts_);
+//        vector<FeatureIDType>().swap(pts_ids_);
+//        vector<int>().swap(pts_lifetime_);
+//        vector<Point2f>().swap(init_pts_);
+//        vector<Mat>().swap(vOrbDescriptors);
+//        return;
+//    }
+//    vector<int> vDis;
+//    for (int j = 0; j < currDescriptors.rows; ++j) {
+//        int dis = ORBdescriptor::computeDescriptorDistance(
+//                prev_imImg_desc[j], currDescriptors.row(j));
+//        vDis.push_back(dis);
+//    }
+//    vector<unsigned char> desc_inliers(prev_inImg_points.size(), 0);
+//    for (int i = 0; i < prev_inImg_points.size(); i++) {
+//        if (vDis[i]<=58)
+//            desc_inliers[i] = 1;
+//    }
+//
+//    // Remove outliers
+//    vector<FeatureIDType> prev_tracked_ids(0);
+//    vector<int> prev_tracked_lifetime(0);
+//    vector<Point2f> prev_tracked_points(0);
+//    vector<Point2f> curr_tracked_points(0);
+//    vector<Point2f> init_tracked_position(0);
+//    vector<Mat> prev_tracked_desc(0);
+//    removeUnmarkedElements(
+//            prev_inImg_ids, desc_inliers, prev_tracked_ids);
+//    removeUnmarkedElements(
+//            prev_inImg_lifetime, desc_inliers, prev_tracked_lifetime);
+//    removeUnmarkedElements(
+//            prev_inImg_points, desc_inliers, prev_tracked_points);
+//    removeUnmarkedElements(
+//            curr_inImg_points, desc_inliers, curr_tracked_points);
+//    removeUnmarkedElements(
+//            init_inImg_position, desc_inliers, init_tracked_position);
+//    removeUnmarkedElements(
+//            prev_imImg_desc, desc_inliers, prev_tracked_desc);
+//
+//    // Return if not enough inliers
+//    if ( prev_tracked_points.size()==0 ){
+//        printf("No feature is tracked after descriptor matching!\n");
+//        vector<Point2f>().swap(prev_pts_);
+//        vector<Point2f>().swap(curr_pts_);
+//        vector<FeatureIDType>().swap(pts_ids_);
+//        vector<int>().swap(pts_lifetime_);
+//        vector<Point2f>().swap(init_pts_);
+//        vector<Mat>().swap(vOrbDescriptors);
+//        return;
+//    }
 
     // Further remove outliers by RANSAC.
-    vector<Point2f> prev_tracked_unpts(prev_tracked_points.size());
-    vector<Point2f> curr_tracked_unpts(curr_tracked_points.size());
+    vector<Point2f> prev_tracked_unpts(prev_inImg_points.size());
+    vector<Point2f> curr_tracked_unpts(curr_inImg_points.size());
     undistortPoints(
-            prev_tracked_points, cam_intrinsics, cam_distortion_model,
+            prev_inImg_points, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, prev_tracked_unpts, 
             cv::Matx33d::eye(), cam_intrinsics);
     undistortPoints(
-            curr_tracked_points, cam_intrinsics, cam_distortion_model,
+            curr_inImg_points, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, curr_tracked_unpts, 
             cv::Matx33d::eye(), cam_intrinsics);
 
     vector<unsigned char> ransac_inliers;
-
-    float fx = cam_intrinsics[0];
-    float fy = cam_intrinsics[1];
-    float cx = cam_intrinsics[2];
-    float cy = cam_intrinsics[3];
-    Mat K = ( cv::Mat_<double> (3,3) << fx, 0, cx, 0, fy, cy, 0, 0, 1 );
-    // findEssentialMat(
-    //         prev_tracked_unpts, curr_tracked_unpts,
-    //         K, cv::RANSAC, 0.999, 1.0, ransac_inliers);
     findFundamentalMat(
             prev_tracked_unpts, curr_tracked_unpts,
             cv::FM_RANSAC, 1.0, 0.99, ransac_inliers);
@@ -764,17 +752,17 @@ void ImageProcessor::trackFeatures() {
     vector<Point2f> init_matched_position(0);
     vector<Mat> prev_matched_desc(0);
     removeUnmarkedElements(
-            prev_tracked_ids, ransac_inliers, prev_matched_ids);
+            prev_inImg_ids, ransac_inliers, prev_matched_ids);
     removeUnmarkedElements(
-            prev_tracked_lifetime, ransac_inliers, prev_matched_lifetime);
+            prev_inImg_lifetime, ransac_inliers, prev_matched_lifetime);
     removeUnmarkedElements(
-            prev_tracked_points, ransac_inliers, prev_matched_points);
+            prev_inImg_points, ransac_inliers, prev_matched_points);
     removeUnmarkedElements(
-            curr_tracked_points, ransac_inliers, curr_matched_points);
+            curr_inImg_points, ransac_inliers, curr_matched_points);
     removeUnmarkedElements(
-            init_tracked_position, ransac_inliers, init_matched_position);
-    removeUnmarkedElements(
-            prev_tracked_desc, ransac_inliers, prev_matched_desc);
+            init_inImg_position, ransac_inliers, init_matched_position);
+//    removeUnmarkedElements(
+//            prev_tracked_desc, ransac_inliers, prev_matched_desc);
 
     // Number of matched features left after RANSAC.
     after_ransac = curr_matched_points.size();
@@ -804,7 +792,7 @@ void ImageProcessor::trackFeatures() {
         pts_ids_.push_back(prev_matched_ids[i]);
         pts_lifetime_.push_back(++prev_matched_lifetime[i]);
         init_pts_.push_back(init_matched_position[i]);
-        vOrbDescriptors.push_back(prev_matched_desc[i]);
+//        vOrbDescriptors.push_back(prev_matched_desc[i]);
     }
 
     return;
@@ -822,8 +810,8 @@ void ImageProcessor::trackNewFeatures() {
 
     // Pridict features in current image
     vector<Point2f> curr_pts(new_pts_.size());
-    predictFeatureTracking(
-        new_pts_, R_Prev2Curr, cam_intrinsics, curr_pts);
+//    predictFeatureTracking(
+//        new_pts_, R_Prev2Curr, cam_intrinsics, curr_pts);
 
     // Using LK optical flow to track feaures
     vector<unsigned char> track_inliers(new_pts_.size());
@@ -835,8 +823,8 @@ void ImageProcessor::trackNewFeatures() {
         processor_config.pyramid_levels,
         TermCriteria(TermCriteria::COUNT+TermCriteria::EPS,
             processor_config.max_iteration,
-            processor_config.track_precision),
-        cv::OPTFLOW_USE_INITIAL_FLOW);
+            processor_config.track_precision));
+//        cv::OPTFLOW_USE_INITIAL_FLOW);
 
     // Mark those tracked points out of the image region
     // as untracked.
@@ -877,6 +865,7 @@ void ImageProcessor::trackNewFeatures() {
             processor_config.max_iteration,
             processor_config.track_precision),
         cv::OPTFLOW_USE_INITIAL_FLOW);
+
     // Mark those tracked points out of the image region
     // as untracked.
     for (int i = 0; i < prev_pts_cpy.size(); ++i) {  
@@ -892,6 +881,7 @@ void ImageProcessor::trackNewFeatures() {
         if (dis > 1)    
             reverse_inliers[i] = 0;
     }
+
     // Remove outliers
     vector<Point2f> prev_pts_inImg(0);
     vector<Point2f> curr_pts_inImg(0);
@@ -906,65 +896,56 @@ void ImageProcessor::trackNewFeatures() {
         return;
     }
 
-    // Mark as outliers if descriptor distance is too large
-    vector<int> levels(prev_pts_inImg.size(), 0);
-    Mat prevDescriptors, currDescriptors;
-    if (!prevORBDescriptor_ptr->computeDescriptors(prev_pts_inImg, levels, prevDescriptors) ||
-        !currORBDescriptor_ptr->computeDescriptors(curr_pts_inImg, levels, currDescriptors)) {
-        cerr << "error happen while compute descriptors" << endl;
-        return;
-    }
-    vector<int> vDis;
-    for (int j = 0; j < prevDescriptors.rows; ++j) {
-        int dis = ORBdescriptor::computeDescriptorDistance(
-                prevDescriptors.row(j), currDescriptors.row(j));
-        vDis.push_back(dis);
-    }
-    vector<unsigned char> desc_inliers(prev_pts_inImg.size(), 0);
-    vector<Mat> desc_new(0);
-    for (int i = 0; i < prev_pts_inImg.size(); i++) {
-        if (vDis[i]<=58) {  
-            desc_inliers[i] = 1;
-            desc_new.push_back(prevDescriptors.row(i));
-        }
-    }
-
-    // Remove outliers
-    vector<Point2f> prev_pts_inlier(0);
-    vector<Point2f> curr_pts_inlier(0);
-    removeUnmarkedElements(    
-            prev_pts_inImg, desc_inliers, prev_pts_inlier);
-    removeUnmarkedElements(
-            curr_pts_inImg, desc_inliers, curr_pts_inlier);
-
-    // Return if not enough inliers
-    if ( prev_pts_inlier.size()<20 ){
-        // printf("NO NEW FEATURE IN LAST IMAGE WAS TRACKED");
-        return;
-    }
+//    // Mark as outliers if descriptor distance is too large
+//    vector<int> levels(prev_pts_inImg.size(), 0);
+//    Mat prevDescriptors, currDescriptors;
+//    if (!prevORBDescriptor_ptr->computeDescriptors(prev_pts_inImg, levels, prevDescriptors) ||
+//        !currORBDescriptor_ptr->computeDescriptors(curr_pts_inImg, levels, currDescriptors)) {
+//        cerr << "error happen while compute descriptors" << endl;
+//        return;
+//    }
+//    vector<int> vDis;
+//    for (int j = 0; j < prevDescriptors.rows; ++j) {
+//        int dis = ORBdescriptor::computeDescriptorDistance(
+//                prevDescriptors.row(j), currDescriptors.row(j));
+//        vDis.push_back(dis);
+//    }
+//    vector<unsigned char> desc_inliers(prev_pts_inImg.size(), 0);
+//    vector<Mat> desc_new(0);
+//    for (int i = 0; i < prev_pts_inImg.size(); i++) {
+//        if (vDis[i]<=58) {
+//            desc_inliers[i] = 1;
+//            desc_new.push_back(prevDescriptors.row(i));
+//        }
+//    }
+//
+//    // Remove outliers
+//    vector<Point2f> prev_pts_inlier(0);
+//    vector<Point2f> curr_pts_inlier(0);
+//    removeUnmarkedElements(
+//            prev_pts_inImg, desc_inliers, prev_pts_inlier);
+//    removeUnmarkedElements(
+//            curr_pts_inImg, desc_inliers, curr_pts_inlier);
+//
+//    // Return if not enough inliers
+//    if ( prev_pts_inlier.size()<20 ){
+//        // printf("NO NEW FEATURE IN LAST IMAGE WAS TRACKED");
+//        return;
+//    }
 
     // Undistort inliers
-    vector<Point2f> prev_unpts_inlier(prev_pts_inlier.size());
-    vector<Point2f> curr_unpts_inlier(curr_pts_inlier.size());
+    vector<Point2f> prev_unpts_inlier(prev_pts_inImg.size());
+    vector<Point2f> curr_unpts_inlier(curr_pts_inImg.size());
     undistortPoints(
-            prev_pts_inlier, cam_intrinsics, cam_distortion_model,
+            prev_pts_inImg, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, prev_unpts_inlier, 
             cv::Matx33d::eye(), cam_intrinsics);
     undistortPoints(
-            curr_pts_inlier, cam_intrinsics, cam_distortion_model,
+            curr_pts_inImg, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, curr_unpts_inlier, 
             cv::Matx33d::eye(), cam_intrinsics);
 
     vector<unsigned char> ransac_inliers;
-
-    float fx = cam_intrinsics[0];
-    float fy = cam_intrinsics[1];
-    float cx = cam_intrinsics[2];
-    float cy = cam_intrinsics[3];
-    Mat K = ( cv::Mat_<double> (3,3) << fx, 0, cx, 0, fy, cy, 0, 0, 1 );
-    // findEssentialMat(
-    //         prev_unpts_inlier, curr_unpts_inlier,
-    //         K, cv::RANSAC, 0.999, 1.0, ransac_inliers);
     findFundamentalMat(
             prev_unpts_inlier, curr_unpts_inlier,
             cv::FM_RANSAC, 1.0, 0.99, ransac_inliers);
@@ -973,11 +954,11 @@ void ImageProcessor::trackNewFeatures() {
     vector<Point2f> curr_pts_matched(0);
     vector<Mat> prev_desc_matched(0);
     removeUnmarkedElements(
-            prev_pts_inlier, ransac_inliers, prev_pts_matched);
+            prev_pts_inImg, ransac_inliers, prev_pts_matched);
     removeUnmarkedElements(
-            curr_pts_inlier, ransac_inliers, curr_pts_matched);
-    removeUnmarkedElements(
-            desc_new, ransac_inliers, prev_desc_matched);
+            curr_pts_inImg, ransac_inliers, curr_pts_matched);
+//    removeUnmarkedElements(
+//            desc_new, ransac_inliers, prev_desc_matched);
 
     // Return if no new feature was tracked
     int num_ransac = curr_pts_matched.size();
@@ -994,7 +975,7 @@ void ImageProcessor::trackNewFeatures() {
         pts_ids_.push_back(next_feature_id++);
         pts_lifetime_.push_back(2);
         init_pts_.push_back(prev_pts_matched[i]);
-        vOrbDescriptors.push_back(prev_desc_matched[i]);
+//        vOrbDescriptors.push_back(prev_desc_matched[i]);
     }
 
     // Clear new_pts_
@@ -1125,18 +1106,18 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
             }
         }
 
-        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
-        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
-        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
-        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
-        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
-        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
-        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
-        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
-        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
+//        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
+//        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
+//        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
+//        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
+//        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
+//        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
+//        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
+//        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
+//        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
     }
 
-    printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
+//    printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
 }
 
 
