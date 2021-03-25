@@ -163,6 +163,9 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
         if ( !initializeFirstFeatures(imu_msg_buffer) ) {
             image_state = FIRST_IMAGE;
         } else {
+
+            printf("Time 1: %f\n", curr_img_time-last_pub_time);
+            printf("Freq control 1: %f\n", 0.9*(1.0/processor_config.pub_frequency));
             // frequency control
             if ( curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency) ) {
                 // Find new features to be tracked
@@ -190,6 +193,8 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
         trackNewFeatures();
 
         // frequency control
+        printf("Time 2: %f\n", curr_img_time-last_pub_time);
+        printf("Freq control 2: %f\n", 0.9*(1.0/processor_config.pub_frequency));
         if ( curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency) ) {
             // Find new features to be tracked
             findNewFeaturesToBeTracked();
