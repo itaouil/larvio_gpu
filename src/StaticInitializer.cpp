@@ -54,7 +54,9 @@ bool StaticInitializer::tryIncInit(const std::vector<ImuData>& imu_msg_buffer,
     if (staticImgCounter < static_Num)  // return false if number of consecitive static images does not reach @static_Num
       return false;
   } else {
-//    printf("inclinometer-initializer failed at No.%d static image.",staticImgCounter+1);
+//    printf("inclinometer-initializer failed at No.%d static image.\n",staticImgCounter+1);
+//    printf("Max feature distance allowed. %f\n",max_feature_dis);
+//    printf("Actual distance %f\n",maxDis);
     staticImgCounter = 0;
     return false;
   }
@@ -117,7 +119,7 @@ void StaticInitializer::initializeGravityAndBias(const double& time_bound,
   velocity = Vector3d(0.0, 0.0, 0.0);
   acc_bias = Vector3d(0.0, 0.0, 0.0);
 
-  printf("Inclinometer-initializer completed by using %d imu data !!!\n\n",usefulImuSize);
+  printf("Inclinometer-initializer completed by using %d imu data !!!\n\n", usefulImuSize);
 
   return;
 }

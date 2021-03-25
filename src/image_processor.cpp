@@ -137,10 +137,10 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
     curr_img_ptr = msg;
 
     // Build the image pyramids once since they're used at multiple places
-    createImagePyramids();
+    clahe();
 
     // Initialize ORBDescriptor pointer
-    currORBDescriptor_ptr.reset(new ORBdescriptor(curr_pyramid_[0], 2, processor_config.pyramid_levels));
+    currORBDescriptor_ptr.reset(new ORBdescriptor(curr_img_ptr->image, 2, processor_config.pyramid_levels));
 
     // Get current image time
     curr_img_time = curr_img_ptr->timeStampToSec;
@@ -177,8 +177,8 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
         trackFeatures();
 
         // frequency control
-        printf("Time %f\n", curr_img_time-last_pub_time);
-        printf("RHS %f\n", 0.9*(1.0/processor_config.pub_frequency));
+//        printf("Time %f\n", curr_img_time-last_pub_time);
+//        printf("RHS %f\n", 0.9*(1.0/processor_config.pub_frequency));
 
         if (curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency)) {
             // Det processed feature
@@ -193,7 +193,6 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
 
     // Update the previous image and previous features.
     prev_img_ptr = curr_img_ptr;
-    swap(prev_pyramid_,curr_pyramid_);
     prevORBDescriptor_ptr = currORBDescriptor_ptr;
 
     // Initialize the current features to empty vectors.
@@ -295,7 +294,7 @@ void ImageProcessor::rescalePoints(
 }
 
 
-void ImageProcessor::createImagePyramids() {
+void ImageProcessor::clahe() {
     const Mat& curr_img = curr_img_ptr->image;
 
     // CLAHE
@@ -306,13 +305,6 @@ void ImageProcessor::createImagePyramids() {
     }
     else
         img_ = curr_img;
-
-    // Get Pyramid
-    buildOpticalFlowPyramid(
-        img_, curr_pyramid_,
-        Size(processor_config.patch_size, processor_config.patch_size),
-        processor_config.pyramid_levels, true, BORDER_REFLECT_101,
-        BORDER_CONSTANT, false);
 }
 
 
@@ -800,15 +792,15 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
             }
         }
 
-        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
-        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
-        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
-        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
-        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
-        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
-        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
-        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
-        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
+//        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
+//        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
+//        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
+//        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
+//        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
+//        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
+//        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
+//        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
+//        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
     }
 
 //    printf("Feature message size: %zu\n", feature_msg_ptr->features.size());

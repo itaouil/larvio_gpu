@@ -58,7 +58,7 @@
 #define FEATURE_DETECTOR_FAST 0
 #define FEATURE_DETECTOR_HARRIS 1
 #define FEATURE_DETECTOR_SHI_TOMASI 2
-#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_FAST
+#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_HARRIS
 
 // FAST parameters
 #define FEATURE_DETECTOR_FAST_EPISLON 20.f
@@ -227,7 +227,6 @@ private:
    */
   void trackFeatures();
 
-
   /*
    * @brief publish
    *    Publish the features on the current image including
@@ -237,9 +236,9 @@ private:
 
   /*
    * @brief createImagePyramids
-   *    Create image pyramids used for klt tracking.
+   *    Perform adaptive histogram equalization
    */
-  void createImagePyramids();
+  void clahe();
 
   /*
    * @brief undistortPoints Undistort points based on camera

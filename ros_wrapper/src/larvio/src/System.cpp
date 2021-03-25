@@ -155,7 +155,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
         bool bProcess = ImgProcesser->processImage(msgPtr, imu_msg_buffer, features);
         auto t2 = std::chrono::high_resolution_clock::now();
 
-        //ROS_INFO_STREAM("Image processing: " << ( t2 - t1 ).count()/1e9);
+        ROS_INFO_STREAM("Image processing: " << ( t2 - t1 ).count()/1e9);
 
         // Filtering if get processed feature.
         bool bPubOdo = false;
@@ -164,10 +164,8 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
             bPubOdo = Estimator->processFeatures(features, imu_msg_buffer);
             auto t4 = std::chrono::high_resolution_clock::now();
 
-            //ROS_INFO_STREAM("Estimator processing: " << ( t4 - t3 ).count()/1e9);
+            ROS_INFO_STREAM("Estimator processing: " << ( t4 - t3 ).count()/1e9);
         }
-
-        ROS_INFO_STREAM("Publish odometry 1: " << bPubOdo);
 
         // Publish msgs if necessary
         if (bProcess) {
@@ -196,7 +194,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
             bool bProcess = ImgProcesser->processImage(img_msg_buffer[i], imu_msg_buffer, features);
             auto t2 = std::chrono::high_resolution_clock::now();
 
-            //ROS_INFO_STREAM("Image processing: " << ( t2 - t1 ).count()/1e9);
+            ROS_INFO_STREAM("Image processing: " << ( t2 - t1 ).count()/1e9);
 
             // Filtering if get processed feature.
             bool bPubOdo = false;
@@ -205,10 +203,8 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
                 bPubOdo = Estimator->processFeatures(features, imu_msg_buffer);
                 auto t4 = std::chrono::high_resolution_clock::now();
 
-//                ROS_INFO_STREAM("Estimator processing: " << ( t4 - t3 ).count()/1e9);
+                ROS_INFO_STREAM("Estimator processing: " << ( t4 - t3 ).count()/1e9);
             }
-
-            ROS_INFO_STREAM("Publish odometry 2: " << bPubOdo);
 
             // Publish msgs if necessary
             if (bProcess) {
