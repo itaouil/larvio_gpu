@@ -171,12 +171,15 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
         }
     } else if ( OTHER_IMAGES==image_state ) {
         // Integrate gyro data to get a guess of rotation between current and previous image
-        integrateImuData(R_Prev2Curr, imu_msg_buffer);
+//        integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
         // Tracking features
         trackFeatures();
 
         // frequency control
+        printf("Time %f\n", curr_img_time-last_pub_time);
+        printf("RHS %f\n", 0.9*(1.0/processor_config.pub_frequency));
+
         if (curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency)) {
             // Det processed feature
             getFeatureMsg(features);
@@ -319,7 +322,7 @@ bool ImageProcessor::initializeVilib() {
     l_feature_tracker_options.affine_est_offset = false;
     l_feature_tracker_options.reset_before_detection = false;
     l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
-    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.9 * l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features = l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -431,7 +434,7 @@ bool ImageProcessor::initializeFirstFrame() {
     // very first image received
     trackImage(img, current_tracked_points_map);
 
-    printf("Newly detected points size %zu\n", current_tracked_points_map.size());
+//    printf("Newly detected points size %zu\n", current_tracked_points_map.size());
 
     // Initialize last publish time
     last_pub_time = curr_img_ptr->timeStampToSec;
@@ -447,7 +450,7 @@ bool ImageProcessor::trackFirstFeatures(
         const std::vector<ImuData>& imu_msg_buffer) {
 
     // Integrate gyro data to get a guess of rotation between current and previous image
-    integrateImuData(R_Prev2Curr, imu_msg_buffer);
+//    integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
     //TODO: IMU pre-integration
 
@@ -509,8 +512,8 @@ bool ImageProcessor::trackFirstFeatures(
     //TODO: refine points using ORB descriptor distance
 
     // Undistorted inlier tracked points
-    vector<Point2f> prev_unpts_inlier(current_tracked_points_inlier.size());
     vector<Point2f> curr_unpts_inlier(current_tracked_points_inlier.size());
+    vector<Point2f> prev_unpts_inlier(previous_tracked_points_inlier.size());
     undistortPoints(
             previous_tracked_points_inlier, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, prev_unpts_inlier,
@@ -546,9 +549,9 @@ bool ImageProcessor::trackFirstFeatures(
     vector<Point2f>().swap(init_pts_);
     vector<FeatureIDType>().swap(pts_ids_);
 
-    printf("Points inserted: %zu\n", prev_pts_matched.size());
-    printf("Points inserted: %zu\n", curr_pts_matched.size());
-    printf("IDs inserted: %zu\n", active_ids_matched.size());
+//    printf("Points inserted: %zu\n", prev_pts_matched.size());
+//    printf("Points inserted: %zu\n", curr_pts_matched.size());
+//    printf("IDs inserted: %zu\n", active_ids_matched.size());
 
     // Fill current and previous undistorted points
     for (int i = 0; i < prev_pts_matched.size(); ++i) {
@@ -563,7 +566,7 @@ bool ImageProcessor::trackFirstFeatures(
         pts_lifetime_.push_back(tracked_points_lifetime_map[id]);
     }
 
-    printf("Features after initial tracking: %zu\n", prev_pts_.size());
+//    printf("Features after initial tracking: %zu\n", prev_pts_.size());
 
     return true;
 }
@@ -610,7 +613,7 @@ void ImageProcessor::trackFeatures() {
         // Tracked point
         if (previous_tracked_points_map.find(it.first) != previous_tracked_points_map.end())
         {
-            // Make sure tracked point is within image region\
+            // Make sure tracked point is within image region
             if (it.second.y < 0 || it.second.y > curr_img_ptr->image.rows-1 ||
                 it.second.x < 0 || it.second.x > curr_img_ptr->image.cols-1)
                 continue;
@@ -655,8 +658,8 @@ void ImageProcessor::trackFeatures() {
     }
 
     // Undistorted points
-    vector<Point2f> prev_unpts_inlier(current_tracked_points_inlier.size());
     vector<Point2f> curr_unpts_inlier(current_tracked_points_inlier.size());
+    vector<Point2f> prev_unpts_inlier(previous_tracked_points_inlier.size());
     undistortPoints(
             previous_tracked_points_inlier, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, prev_unpts_inlier,
@@ -703,7 +706,7 @@ void ImageProcessor::trackFeatures() {
         pts_lifetime_.push_back(tracked_points_lifetime_map[id]);
     }
 
-    printf("Features after tracking: %zu\n", prev_pts_.size());
+//    printf("Features after tracking: %zu\n", prev_pts_.size());
 }
 
 
@@ -765,7 +768,7 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
     bool prev_is_last = prev_img_time==last_pub_time;
     double dt_2 = (prev_is_last ? dt_1 : prev_img_time-last_pub_time);
 
-    printf("Points id size feature message: %zu\n", pts_ids_.size());
+//    printf("Points id size feature message: %zu\n", pts_ids_.size());
 
     for (int i = 0; i < pts_ids_.size(); ++i) {
         feature_msg_ptr->features.push_back(MonoFeatureMeasurement());
@@ -797,18 +800,18 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
             }
         }
 
-//        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
-//        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
-//        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
-//        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
-//        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
-//        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
-//        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
-//        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
-//        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
+        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
+        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
+        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
+        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
+        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
+        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
+        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
+        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
+        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
     }
 
-    printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
+//    printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
 }
 
 
