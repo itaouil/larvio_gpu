@@ -43,7 +43,6 @@ td: 0.0
 pyramid_levels: 2
 patch_size: 15
 fast_threshold: 30
-max_iteration: 30
 track_precision: 0.01
 ransac_threshold: 1
 max_features_num: 100

@@ -55,7 +55,6 @@ bool ImageProcessor::loadParameters() {
     processor_config.patch_size = fsSettings["patch_size"];
     processor_config.min_distance = fsSettings["min_distance"];
     processor_config.pub_frequency = fsSettings["pub_frequency"];
-    processor_config.max_iteration = fsSettings["max_iteration"];
     processor_config.fast_threshold = fsSettings["fast_threshold"];
     processor_config.pyramid_levels = fsSettings["pyramid_levels"];
     processor_config.track_precision = fsSettings["track_precision"];
@@ -174,7 +173,10 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
 //        integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
         // Tracking features
+        auto t1 = std::chrono::high_resolution_clock::now();
         trackFeatures();
+        auto t2 = std::chrono::high_resolution_clock::now();
+        printf("Time TrackFeatures %f\n", ( t2 - t1 ).count()/1e9);
 
         // frequency control
 //        printf("Time %f\n", curr_img_time-last_pub_time);
@@ -182,10 +184,16 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
 
         if (curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency)) {
             // Det processed feature
+            auto t3 = std::chrono::high_resolution_clock::now();
             getFeatureMsg(features);
+            auto t4 = std::chrono::high_resolution_clock::now();
+            printf("Time GetFeatures %f\n", ( t2 - t1 ).count()/1e9);
 
             // Publishing msgs
+            auto t5 = std::chrono::high_resolution_clock::now();
             publish();
+            auto t6 = std::chrono::high_resolution_clock::now();
+            printf("Time Publish %f\n", ( t6 - t5 ).count()/1e9);
 
             haveFeatures = true;
         }
@@ -577,6 +585,8 @@ void ImageProcessor::trackFeatures() {
 
     //TODO: IMU pre-integration
 
+    auto t1 = std::chrono::high_resolution_clock::now();
+
     // IDs of active features tracked
     std::vector<int> active_ids_inlier;
 
@@ -649,6 +659,10 @@ void ImageProcessor::trackFeatures() {
         return;
     }
 
+    auto t2 = std::chrono::high_resolution_clock::now();
+    printf("Time Tracking %f\n", ( t2 - t1 ).count()/1e9);
+
+    auto t3 = std::chrono::high_resolution_clock::now();
     // Undistorted points
     vector<Point2f> curr_unpts_inlier(current_tracked_points_inlier.size());
     vector<Point2f> prev_unpts_inlier(previous_tracked_points_inlier.size());
@@ -678,6 +692,10 @@ void ImageProcessor::trackFeatures() {
         printf("No feature survive after RANSAC2: %zu\n", curr_pts_matched.size());
     }
 
+    auto t4 = std::chrono::high_resolution_clock::now();
+    printf("Time Ransac %f\n", ( t4 - t3 ).count()/1e9);
+
+    auto t5 = std::chrono::high_resolution_clock::now();
     // Clear vectors
     vector<Point2f>().swap(prev_pts_);
     vector<Point2f>().swap(curr_pts_);
@@ -697,6 +715,8 @@ void ImageProcessor::trackFeatures() {
         init_pts_.emplace_back(tracked_points_initial_map[id]);
         pts_lifetime_.push_back(tracked_points_lifetime_map[id]);
     }
+    auto t6 = std::chrono::high_resolution_clock::now();
+    printf("Time Populating %f\n", ( t4 - t3 ).count()/1e9);
 
 //    printf("Features after tracking: %zu\n", prev_pts_.size());
 }
