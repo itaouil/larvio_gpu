@@ -61,8 +61,8 @@
 #define FEATURE_DETECTOR_USED FEATURE_DETECTOR_HARRIS
 
 // FAST parameters
-#define FEATURE_DETECTOR_FAST_EPISLON 20.f
-#define FEATURE_DETECTOR_FAST_ARC_LENGTH 15
+#define FEATURE_DETECTOR_FAST_EPISLON 25.f
+#define FEATURE_DETECTOR_FAST_ARC_LENGTH 18
 #define FEATURE_DETECTOR_FAST_SCORE SUM_OF_ABS_DIFF_ON_ARC
 
 // Harris/Shi-Tomasi parameters
@@ -118,15 +118,12 @@ private:
    */
   struct ProcessorConfig {
     int pyramid_levels;
-    int patch_size;
     int fast_threshold;
-    int max_iteration;
-    double track_precision;
-    double ransac_threshold;
 
-    int max_features_num;
-    int min_distance;
+    int max_distance;
     bool flag_equalize;
+    int max_features_num;
+    bool publish_features;
 
     int img_rate;
     int pub_frequency;
@@ -147,36 +144,6 @@ private:
    *    Load parameters from the parameter server.
    */
   bool loadParameters();
-
-  /*
-   * @brief integrateImuData Integrates the IMU gyro readings
-   *    between the two consecutive images, which is used for
-   *    both tracking prediction and 2-point RANSAC.
-   * @param imu msg buffer
-   * @return cam_R_p2c: a rotation matrix which takes a vector
-   *    from previous cam0 frame to current cam0 frame.
-   */
-  void integrateImuData(cv::Matx33f& cam_R_p2c,
-            const std::vector<ImuData>& imu_msg_buffer);
-
-  /*
-   * @brief predictFeatureTracking Compensates the rotation
-   *    between consecutive camera frames so that feature
-   *    tracking would be more robust and fast.
-   * @param input_pts: features in the previous image to be tracked.
-   * @param R_p_c: a rotation matrix takes a vector in the previous
-   *    camera frame to the current camera frame.
-   * @param intrinsics: intrinsic matrix of the camera.
-   * @return compensated_pts: predicted locations of the features
-   *    in the current image based on the provided rotation.
-   *
-   * Note that the input and output points are of pixel coordinates.
-   */
-  void predictFeatureTracking(
-      const std::vector<cv::Point2f>& input_pts,
-      const cv::Matx33f& R_p_c,
-      const cv::Vec4d& intrinsics,
-      std::vector<cv::Point2f>& compenstated_pts);
 
   /*
    * @brief initializeVilib
@@ -233,12 +200,6 @@ private:
    *    both the tracked and newly detected ones.
    */
   void publish();
-
-  /*
-   * @brief createImagePyramids
-   *    Perform adaptive histogram equalization
-   */
-  void clahe();
 
   /*
    * @brief undistortPoints Undistort points based on camera
@@ -324,14 +285,14 @@ private:
   ProcessorConfig processor_config;
 
   // Camera calibration parameters
-  std::string cam_distortion_model;
   cv::Vec2i cam_resolution;
   cv::Vec4d cam_intrinsics;
   cv::Vec4d cam_distortion_coeffs;
+  std::string cam_distortion_model;
 
   // Take a vector from cam frame to the IMU frame.
-  cv::Matx33d R_cam_imu;
   cv::Vec3d t_cam_imu;
+  cv::Matx33d R_cam_imu;
 
   // Take a vector from prev cam frame to curr cam frame
   cv::Matx33f R_Prev2Curr;
@@ -340,14 +301,10 @@ private:
   ImageDataPtr prev_img_ptr;
   ImageDataPtr curr_img_ptr;
 
-  // Pyramids for previous and current image
-  std::vector<cv::Mat> prev_pyramid_;
-  std::vector<cv::Mat> curr_pyramid_;
-
   // Number of features after each outlier removal step.
-  int before_tracking;
-  int after_tracking;
   int after_ransac;
+  int after_tracking;
+  int before_tracking;
 
   // Config file path
   std::string config_file;
@@ -356,12 +313,11 @@ private:
   cv::Mat visual_img;
 
   // Points for tracking, added by QXC
-  std::vector<cv::Point2f> new_pts_;
+  std::vector<int> pts_lifetime_;
   std::vector<cv::Point2f> prev_pts_;
   std::vector<cv::Point2f> curr_pts_;
-  std::vector<FeatureIDType> pts_ids_;
-  std::vector<int> pts_lifetime_;
   std::vector<cv::Point2f> init_pts_;
+  std::vector<FeatureIDType> pts_ids_;
 
   // Time of last published image
   double last_pub_time;
@@ -390,8 +346,9 @@ private:
   std::map<FeatureIDType, cv::Point2f> current_tracked_points_map;
   std::map<FeatureIDType, cv::Point2f> previous_tracked_points_map;
 
-  // Lifetime and initial point for tracked points
+  // Lifetime, initial point, and descriptors for tracked points
   std::map<FeatureIDType, int> tracked_points_lifetime_map;
+  std::map<FeatureIDType, cv::Mat> tracked_points_descriptor_map;
   std::map<FeatureIDType, cv::Point2f> tracked_points_initial_map;
 };
 

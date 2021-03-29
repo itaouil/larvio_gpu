@@ -5,8 +5,8 @@ output_dir: "/home/itaouil/datasets/VIO/FPV/"
 
 # switches
 if_FEJ: 0    # 0(false) or 1(true)
-estimate_extrin: 0    # 0(false) or 1(true)
 estimate_td: 0    # 0(false) or 1(true)
+estimate_extrin: 0    # 0(false) or 1(true)
 calib_imu_instrinsic: 0    # 0(false) or 1(true)
 
 # camera instrinsic
@@ -40,15 +40,13 @@ td: 0.0
 # TODO: if calibrate camera instrinsic online
 
 # visual front-end parameters
+max_distance: 68
+pub_frequency: 35
 pyramid_levels: 2
-patch_size: 15
 fast_threshold: 30
-track_precision: 0.01
+publish_features: 1
 ransac_threshold: 1
 max_features_num: 100
-min_distance: 15
-flag_equalize: 1    # 0(false) or 1(true)
-pub_frequency: 35
 
 # window size
 sw_size: 10
@@ -60,24 +58,24 @@ translation_threshold: 0.4
 tracking_rate_threshold: 0.5
 
 # feature triangulation parameters
-least_observation_number: 3
 max_track_len: 10
+least_observation_number: 3
 feature_translation_threshold: -1.0
 
 # imu and camera measurement noise parameters
-noise_gyro: 0.004
 noise_acc: 0.08
-noise_gyro_bias: 2e-6
-noise_acc_bias: 4e-5
+noise_gyro: 0.004
 noise_feature: 0.008
+noise_acc_bias: 4e-5
+noise_gyro_bias: 2e-6
 
 # filter intial covariance
-initial_covariance_orientation: 4e-4
+initial_covariance_acc_bias: 0.01
 initial_covariance_velocity: 0.25
 initial_covariance_position: 1.0
 initial_covariance_gyro_bias: 4e-4
-initial_covariance_acc_bias: 0.01
 initial_covariance_extrin_rot: 3.0462e-8
+initial_covariance_orientation: 4e-4
 initial_covariance_extrin_trans: 9e-8
 
 # fej settings
@@ -85,10 +83,10 @@ reset_fej_threshold: 10.11
 
 # zupt settings
 if_ZUPT_valid: 1    # 0(false) or 1(true)
-zupt_max_feature_dis: 2e-3
 zupt_noise_v: 1e-2    # std
 zupt_noise_p: 1e-2
 zupt_noise_q: 3.4e-2
+zupt_max_feature_dis: 2e-3
 
 # static initialization setting
 static_duration: 1.0

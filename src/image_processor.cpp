@@ -11,13 +11,8 @@
 // C++
 #include <set>
 #include <iostream>
-#include <algorithm>
-
-// Eigen
-#include <Eigen/Dense>
 
 // LARVIO
-#include <larvio/math_utils.hpp>
 #include <larvio/image_processor.h>
 
 // OpenCV
@@ -51,16 +46,12 @@ bool ImageProcessor::loadParameters() {
     }
 
     // Read config parameters
-    processor_config.img_rate = fsSettings["img_rate"];
-    processor_config.patch_size = fsSettings["patch_size"];
-    processor_config.min_distance = fsSettings["min_distance"];
+    processor_config.max_distance = fsSettings["max_distance"];
     processor_config.pub_frequency = fsSettings["pub_frequency"];
     processor_config.fast_threshold = fsSettings["fast_threshold"];
     processor_config.pyramid_levels = fsSettings["pyramid_levels"];
-    processor_config.track_precision = fsSettings["track_precision"];
-    processor_config.ransac_threshold = fsSettings["ransac_threshold"];
     processor_config.max_features_num = fsSettings["max_features_num"];
-    processor_config.flag_equalize = static_cast<int>(fsSettings["flag_equalize"]) != 0;
+    processor_config.publish_features = static_cast<int>(fsSettings["publish_features"]) != 0;
 
     // Output files directory
     fsSettings["output_dir"] >> output_dir;
@@ -118,170 +109,6 @@ bool ImageProcessor::initialize() {
 }
 
 
-// Process current img msg and return the feature msg.
-bool ImageProcessor::processImage(const ImageDataPtr& msg,
-        const std::vector<ImuData>& imu_msg_buffer, MonoCameraMeasurementPtr features) {
-
-    // images are not utilized until receiving imu msgs ahead
-    if (!bFirstImg) {
-        if ((imu_msg_buffer.begin() != imu_msg_buffer.end()) && 
-            (imu_msg_buffer.begin()->timeStampToSec-msg->timeStampToSec <= 0.0)) {
-            bFirstImg = true;
-            printf("Images from now on will be utilized...\n");
-        }
-        else
-            return false;
-    }
-
-    curr_img_ptr = msg;
-
-    // Build the image pyramids once since they're used at multiple places
-    clahe();
-
-    // Initialize ORBDescriptor pointer
-    currORBDescriptor_ptr.reset(new ORBdescriptor(curr_img_ptr->image, 2, processor_config.pyramid_levels));
-
-    // Get current image time
-    curr_img_time = curr_img_ptr->timeStampToSec;
-
-    // Flag to return;
-    bool haveFeatures = false;
-
-    // Detect features in the first frame.
-    if ( FIRST_IMAGE==image_state ) {
-        if (initializeFirstFrame())
-            image_state = SECOND_IMAGE;
-    } else if ( SECOND_IMAGE==image_state ) {
-        if ( !trackFirstFeatures(imu_msg_buffer) ) {
-            image_state = FIRST_IMAGE;
-        } else {
-            // frequency control
-            if ( curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency) ) {
-                // Det processed feature
-                getFeatureMsg(features);
-
-                // Publishing msgs
-                publish();
-
-                haveFeatures = true;
-            }
-
-            image_state = OTHER_IMAGES;
-        }
-    } else if ( OTHER_IMAGES==image_state ) {
-        // Integrate gyro data to get a guess of rotation between current and previous image
-//        integrateImuData(R_Prev2Curr, imu_msg_buffer);
-
-        // Tracking features
-        auto t1 = std::chrono::high_resolution_clock::now();
-        trackFeatures();
-        auto t2 = std::chrono::high_resolution_clock::now();
-        printf("Time TrackFeatures %f\n", ( t2 - t1 ).count()/1e9);
-
-        // frequency control
-//        printf("Time %f\n", curr_img_time-last_pub_time);
-//        printf("RHS %f\n", 0.9*(1.0/processor_config.pub_frequency));
-
-        if (curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency)) {
-            // Det processed feature
-            auto t3 = std::chrono::high_resolution_clock::now();
-            getFeatureMsg(features);
-            auto t4 = std::chrono::high_resolution_clock::now();
-            printf("Time GetFeatures %f\n", ( t2 - t1 ).count()/1e9);
-
-            // Publishing msgs
-            auto t5 = std::chrono::high_resolution_clock::now();
-            publish();
-            auto t6 = std::chrono::high_resolution_clock::now();
-            printf("Time Publish %f\n", ( t6 - t5 ).count()/1e9);
-
-            haveFeatures = true;
-        }
-    }
-
-    // Update the previous image and previous features.
-    prev_img_ptr = curr_img_ptr;
-    prevORBDescriptor_ptr = currORBDescriptor_ptr;
-
-    // Initialize the current features to empty vectors.
-//    swap(prev_pts_,curr_pts_);
-//    vector<Point2f>().swap(curr_pts_);
-
-    prev_img_time = curr_img_time;
-
-    return haveFeatures;
-}
-
-
-void ImageProcessor::integrateImuData(Matx33f& cam_R_p2c,
-        const std::vector<ImuData>& imu_msg_buffer) {
-    // Find the start and the end limit within the imu msg buffer.
-    auto begin_iter = imu_msg_buffer.begin();
-    while (begin_iter != imu_msg_buffer.end()) {
-    if (begin_iter->timeStampToSec-
-            prev_img_ptr->timeStampToSec < -0.0049)
-        ++begin_iter;
-    else
-        break;
-    }
-
-    auto end_iter = begin_iter;
-    while (end_iter != imu_msg_buffer.end()) {
-    if (end_iter->timeStampToSec-
-            curr_img_ptr->timeStampToSec < 0.0049)
-        ++end_iter;
-    else
-        break;
-    }
-
-    // Compute the mean angular velocity in the IMU frame.
-    Vec3f mean_ang_vel(0.0, 0.0, 0.0);
-    for (auto iter = begin_iter; iter < end_iter; ++iter)
-        mean_ang_vel += Vec3f(iter->angular_velocity[0],iter->angular_velocity[1], iter->angular_velocity[2]);
-
-    if ((end_iter-begin_iter) > 0)
-        mean_ang_vel *= 1.0f / (end_iter-begin_iter);
-
-    // Transform the mean angular velocity from the IMU
-    // frame to the cam0 and cam1 frames.
-    Vec3f cam_mean_ang_vel = R_cam_imu.t() * mean_ang_vel;
-
-    // Compute the relative rotation.
-    double dtime = curr_img_ptr->timeStampToSec-
-        prev_img_ptr->timeStampToSec;
-    Rodrigues(cam_mean_ang_vel*dtime, cam_R_p2c);
-    cam_R_p2c = cam_R_p2c.t();
-}
-
-
-void ImageProcessor::predictFeatureTracking(
-    const vector<cv::Point2f>& input_pts,
-    const cv::Matx33f& R_p_c,
-    const cv::Vec4d& intrinsics,
-    vector<cv::Point2f>& compensated_pts) {
-    // Return directly if there are no input features.
-    if (input_pts.empty()) {
-        compensated_pts.clear();
-        return;
-    }
-    compensated_pts.resize(input_pts.size());
-
-    // Intrinsic matrix.
-    cv::Matx33f K(
-        intrinsics[0], 0.0, intrinsics[2],
-        0.0, intrinsics[1], intrinsics[3],
-        0.0, 0.0, 1.0);
-    cv::Matx33f H = K * R_p_c * K.inv();  
-
-    for (int i = 0; i < input_pts.size(); ++i) {
-        cv::Vec3f p1(input_pts[i].x, input_pts[i].y, 1.0f);
-        cv::Vec3f p2 = H * p1;
-        compensated_pts[i].x = p2[0] / p2[2];
-        compensated_pts[i].y = p2[1] / p2[2];
-    }
-}
-
-
 void ImageProcessor::rescalePoints(
     vector<Point2f>& pts1, vector<Point2f>& pts2,
     float& scaling_factor) {
@@ -302,27 +129,13 @@ void ImageProcessor::rescalePoints(
 }
 
 
-void ImageProcessor::clahe() {
-    const Mat& curr_img = curr_img_ptr->image;
-
-    // CLAHE
-    cv::Mat img_;
-    if (processor_config.flag_equalize) {
-        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));
-        clahe->apply(curr_img, img_);
-    }
-    else
-        img_ = curr_img;
-}
-
-
 bool ImageProcessor::initializeVilib() {
     FeatureTrackerOptions l_feature_tracker_options;
     l_feature_tracker_options.affine_est_gain = false;
-    l_feature_tracker_options.affine_est_offset = false;
+    l_feature_tracker_options.affine_est_offset = true;
     l_feature_tracker_options.reset_before_detection = false;
     l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
-    l_feature_tracker_options.min_tracks_to_detect_new_features = l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.8 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -405,7 +218,7 @@ void ImageProcessor::clearDeadFeatures() {
     std::vector<FeatureIDType> inactive_feature_ids;
 
     // Check which features are dead
-    for (const auto& point: previous_tracked_points_map)
+    for (const auto &point: previous_tracked_points_map)
     {
         if (current_tracked_points_map.find(point.first) == current_tracked_points_map.end())
         {
@@ -414,12 +227,88 @@ void ImageProcessor::clearDeadFeatures() {
     }
 
     // Clear dead features info
-    for (auto id: inactive_feature_ids)
+    for (const auto &id: inactive_feature_ids)
     {
         tracked_points_initial_map.erase(id);
         tracked_points_lifetime_map.erase(id);
         previous_tracked_points_map.erase(id);
     }
+}
+
+
+// Process current img msg and return the feature msg.
+bool ImageProcessor::processImage(const ImageDataPtr& msg,
+                                  const std::vector<ImuData>& imu_msg_buffer, MonoCameraMeasurementPtr features) {
+
+    // images are not utilized until receiving imu msgs ahead
+    if (!bFirstImg) {
+        if ((imu_msg_buffer.begin() != imu_msg_buffer.end()) &&
+            (imu_msg_buffer.begin()->timeStampToSec-msg->timeStampToSec <= 0.0)) {
+            bFirstImg = true;
+            printf("Images from now on will be utilized...\n");
+        }
+        else
+            return false;
+    }
+
+    curr_img_ptr = msg;
+
+    // Get current image time
+    curr_img_time = curr_img_ptr->timeStampToSec;
+
+    // Flag to return;
+    bool haveFeatures = false;
+
+    // Detect features in the first frame.
+    if ( FIRST_IMAGE==image_state ) {
+        if (initializeFirstFrame())
+            image_state = SECOND_IMAGE;
+    } else if ( SECOND_IMAGE==image_state ) {
+        if ( !trackFirstFeatures(imu_msg_buffer) ) {
+            image_state = FIRST_IMAGE;
+        } else {
+            // frequency control
+            if ( curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency) ) {
+                // Det processed feature
+                getFeatureMsg(features);
+
+                // Publishing msgs
+                publish();
+
+                haveFeatures = true;
+            }
+
+            image_state = OTHER_IMAGES;
+        }
+    } else if ( OTHER_IMAGES==image_state ) {
+        // Tracking features
+        auto t1 = std::chrono::high_resolution_clock::now();
+        trackFeatures();
+        auto t2 = std::chrono::high_resolution_clock::now();
+//        printf("Time TrackFeatures %f\n", ( t2 - t1 ).count()/1e9);
+
+        // frequency control
+        if (curr_img_time-last_pub_time >= 0.9*(1.0/processor_config.pub_frequency)) {
+            // Det processed feature
+            auto t3 = std::chrono::high_resolution_clock::now();
+            getFeatureMsg(features);
+            auto t4 = std::chrono::high_resolution_clock::now();
+//            printf("Time GetFeatures %f\n", ( t2 - t1 ).count()/1e9);
+
+            // Publishing msgs
+            auto t5 = std::chrono::high_resolution_clock::now();
+            publish();
+            auto t6 = std::chrono::high_resolution_clock::now();
+//            printf("Time Publish %f\n", ( t6 - t5 ).count()/1e9);
+
+            haveFeatures = true;
+        }
+    }
+
+    // Update times
+    prev_img_time = curr_img_time;
+
+    return haveFeatures;
 }
 
 
@@ -434,12 +323,10 @@ bool ImageProcessor::initializeFirstFrame() {
     // very first image received
     trackImage(img, current_tracked_points_map);
 
-//    printf("Newly detected points size %zu\n", current_tracked_points_map.size());
-
     // Initialize last publish time
     last_pub_time = curr_img_ptr->timeStampToSec;
 
-    if (current_tracked_points_map.size()>20)
+    if (current_tracked_points_map.size() > 20)
         return true;
     else
         return false;
@@ -448,14 +335,10 @@ bool ImageProcessor::initializeFirstFrame() {
 
 bool ImageProcessor::trackFirstFeatures(
         const std::vector<ImuData>& imu_msg_buffer) {
-
-    // Integrate gyro data to get a guess of rotation between current and previous image
-//    integrateImuData(R_Prev2Curr, imu_msg_buffer);
-
     //TODO: IMU pre-integration
 
     // IDs of active features tracked
-    std::vector<int> active_ids_inlier;
+    std::vector<FeatureIDType> active_ids;
 
     // Current tracked features till now
     // become the previous tracked features
@@ -468,24 +351,19 @@ bool ImageProcessor::trackFirstFeatures(
 
     // Previous and current points which have been
     // tracked through two consecutive images
-    std::vector<cv::Point2f> current_tracked_points_inlier;
-    std::vector<cv::Point2f> previous_tracked_points_inlier;
+    std::vector<cv::Point2f> current_tracked_points;
+    std::vector<cv::Point2f> previous_tracked_points;
 
     // Filter currently tracked points between
     // inliers and newly detected points and initialize
     // their lifetime and initial point
-    for (auto it : current_tracked_points_map)
+    for (const auto &it : current_tracked_points_map)
     {
         // Tracked point
         if (previous_tracked_points_map.find(it.first) != previous_tracked_points_map.end())
         {
-            // Make sure tracked point is within image region
-            if (it.second.y < 0 || it.second.y > curr_img_ptr->image.rows-1 ||
-                it.second.x < 0 || it.second.x > curr_img_ptr->image.cols-1)
-                continue;
-
             // Mark point as active
-            active_ids_inlier.push_back(it.first);
+            active_ids.push_back(it.first);
 
             // Tracked point initial lifetime
             tracked_points_lifetime_map[it.first] = 2;
@@ -495,8 +373,8 @@ bool ImageProcessor::trackFirstFeatures(
             cv::Point2f previous_point = previous_tracked_points_map[it.first];
 
             // Populate inlier vectors
-            current_tracked_points_inlier.push_back(current_point);
-            previous_tracked_points_inlier.push_back(previous_point);
+            current_tracked_points.push_back(current_point);
+            previous_tracked_points.push_back(previous_point);
         }
         // Newly detected point
         else
@@ -509,17 +387,19 @@ bool ImageProcessor::trackFirstFeatures(
         tracked_points_initial_map[it.first] = cv::Point2f(-1, -1);
     }
 
-    //TODO: refine points using ORB descriptor distance
+    // Return if not enough inliers
+    if (previous_tracked_points.size() < 20)
+        return false;
 
     // Undistorted inlier tracked points
-    vector<Point2f> curr_unpts_inlier(current_tracked_points_inlier.size());
-    vector<Point2f> prev_unpts_inlier(previous_tracked_points_inlier.size());
+    vector<Point2f> curr_unpts_inlier(current_tracked_points.size());
+    vector<Point2f> prev_unpts_inlier(previous_tracked_points.size());
     undistortPoints(
-            previous_tracked_points_inlier, cam_intrinsics, cam_distortion_model,
+            previous_tracked_points, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, prev_unpts_inlier,
             cv::Matx33d::eye(), cam_intrinsics);
     undistortPoints(
-            current_tracked_points_inlier, cam_intrinsics, cam_distortion_model,
+            current_tracked_points, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, curr_unpts_inlier,
             cv::Matx33d::eye(), cam_intrinsics);
 
@@ -528,12 +408,12 @@ bool ImageProcessor::trackFirstFeatures(
     findFundamentalMat(prev_unpts_inlier, curr_unpts_inlier,cv::FM_RANSAC,1.0,0.99, ransac_inliers);
 
     // Refine points with RANSAC
-    vector<int> active_ids_matched(0);
     vector<Point2f> prev_pts_matched(0);
     vector<Point2f> curr_pts_matched(0);
-    removeUnmarkedElements(active_ids_inlier, ransac_inliers, active_ids_matched);
-    removeUnmarkedElements(previous_tracked_points_inlier, ransac_inliers,prev_pts_matched);
-    removeUnmarkedElements(current_tracked_points_inlier, ransac_inliers, curr_pts_matched);
+    vector<FeatureIDType> active_ids_matched(0);
+    removeUnmarkedElements(active_ids, ransac_inliers, active_ids_matched);
+    removeUnmarkedElements(previous_tracked_points, ransac_inliers,prev_pts_matched);
+    removeUnmarkedElements(current_tracked_points, ransac_inliers, curr_pts_matched);
 
     // Features initialized failed if less than 20 inliers are tracked
     if (curr_pts_matched.size() < 20)
@@ -549,10 +429,6 @@ bool ImageProcessor::trackFirstFeatures(
     vector<Point2f>().swap(init_pts_);
     vector<FeatureIDType>().swap(pts_ids_);
 
-//    printf("Points inserted: %zu\n", prev_pts_matched.size());
-//    printf("Points inserted: %zu\n", curr_pts_matched.size());
-//    printf("IDs inserted: %zu\n", active_ids_matched.size());
-
     // Fill current and previous undistorted points
     for (int i = 0; i < prev_pts_matched.size(); ++i) {
         prev_pts_.push_back(prev_pts_matched[i]);
@@ -565,8 +441,6 @@ bool ImageProcessor::trackFirstFeatures(
         init_pts_.emplace_back(tracked_points_initial_map[id]);
         pts_lifetime_.push_back(tracked_points_lifetime_map[id]);
     }
-
-//    printf("Features after initial tracking: %zu\n", prev_pts_.size());
 
     return true;
 }
@@ -587,8 +461,9 @@ void ImageProcessor::trackFeatures() {
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
-    // IDs of active features tracked
-    std::vector<int> active_ids_inlier;
+    // IDs of actively tracked features
+    // and newly detected features
+    std::vector<FeatureIDType> active_ids;
 
     // Current tracked features till now
     // become the previous tracked features
@@ -604,31 +479,26 @@ void ImageProcessor::trackFeatures() {
 
     // Previous and current points which have been
     // tracked through two consecutive images
-    std::vector<cv::Point2f> current_tracked_points_inlier;
-    std::vector<cv::Point2f> previous_tracked_points_inlier;
+    std::vector<cv::Point2f> current_tracked_points;
+    std::vector<cv::Point2f> previous_tracked_points;
 
     // Filter currently tracked points between
     // inliers and newly detected points and initialize
     // their lifetime and initial point
-    for (auto it : current_tracked_points_map)
+    for (const auto &it : current_tracked_points_map)
     {
         // Tracked point
         if (previous_tracked_points_map.find(it.first) != previous_tracked_points_map.end())
         {
-            // Make sure tracked point is within image region
-            if (it.second.y < 0 || it.second.y > curr_img_ptr->image.rows-1 ||
-                it.second.x < 0 || it.second.x > curr_img_ptr->image.cols-1)
-                continue;
-
-            active_ids_inlier.push_back(it.first);
+            active_ids.push_back(it.first);
 
             // Corresponding points in tracking process
             cv::Point2f current_point = it.second;
             cv::Point2f previous_point = previous_tracked_points_map[it.first];
 
             // Populate inliers
-            current_tracked_points_inlier.push_back(current_point);
-            previous_tracked_points_inlier.push_back(previous_point);
+            current_tracked_points.push_back(current_point);
+            previous_tracked_points.push_back(previous_point);
 
             // Tracked point lifetime
             tracked_points_lifetime_map[it.first] += 1;
@@ -645,7 +515,7 @@ void ImageProcessor::trackFeatures() {
     }
 
     // Number of features left after tracking.
-    after_tracking = current_tracked_points_inlier.size();
+    after_tracking = current_tracked_points.size();
 
     // debug log
     if (0 == after_tracking) {
@@ -660,18 +530,19 @@ void ImageProcessor::trackFeatures() {
     }
 
     auto t2 = std::chrono::high_resolution_clock::now();
-    printf("Time Tracking %f\n", ( t2 - t1 ).count()/1e9);
+//    printf("Time Tracking %f\n", ( t2 - t1 ).count()/1e9);
+
 
     auto t3 = std::chrono::high_resolution_clock::now();
     // Undistorted points
-    vector<Point2f> curr_unpts_inlier(current_tracked_points_inlier.size());
-    vector<Point2f> prev_unpts_inlier(previous_tracked_points_inlier.size());
+    vector<Point2f> curr_unpts_inlier(current_tracked_points.size());
+    vector<Point2f> prev_unpts_inlier(previous_tracked_points.size());
     undistortPoints(
-            previous_tracked_points_inlier, cam_intrinsics, cam_distortion_model,
+            previous_tracked_points, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, prev_unpts_inlier,
             cv::Matx33d::eye(), cam_intrinsics);
     undistortPoints(
-            current_tracked_points_inlier, cam_intrinsics, cam_distortion_model,
+            current_tracked_points, cam_intrinsics, cam_distortion_model,
             cam_distortion_coeffs, curr_unpts_inlier,
             cv::Matx33d::eye(), cam_intrinsics);
 
@@ -679,21 +550,28 @@ void ImageProcessor::trackFeatures() {
     vector<unsigned char> ransac_inliers;
     findFundamentalMat(prev_unpts_inlier, curr_unpts_inlier, cv::FM_RANSAC, 1.0, 0.99, ransac_inliers);
 
-    vector<int> active_ids_matched(0);
     vector<Point2f> prev_pts_matched(0);
     vector<Point2f> curr_pts_matched(0);
-    removeUnmarkedElements(active_ids_inlier, ransac_inliers, active_ids_matched);
-    removeUnmarkedElements(previous_tracked_points_inlier, ransac_inliers,prev_pts_matched);
-    removeUnmarkedElements(current_tracked_points_inlier, ransac_inliers, curr_pts_matched);
+    vector<FeatureIDType> active_ids_matched(0);
+    removeUnmarkedElements(active_ids, ransac_inliers, active_ids_matched);
+    removeUnmarkedElements(previous_tracked_points, ransac_inliers,prev_pts_matched);
+    removeUnmarkedElements(current_tracked_points, ransac_inliers, curr_pts_matched);
 
     // Features initialized failed if less than 20 inliers are tracked
-    if (curr_pts_matched.size() < 20)
+    if (curr_pts_matched.empty())
     {
-        printf("No feature survive after RANSAC2: %zu\n", curr_pts_matched.size());
+        printf("No feature survive after RANSAC !");
+        vector<Point2f>().swap(prev_pts_);
+        vector<Point2f>().swap(curr_pts_);
+        vector<FeatureIDType>().swap(pts_ids_);
+        vector<int>().swap(pts_lifetime_);
+        vector<Point2f>().swap(init_pts_);
+        vector<Mat>().swap(vOrbDescriptors);
+        return;
     }
 
     auto t4 = std::chrono::high_resolution_clock::now();
-    printf("Time Ransac %f\n", ( t4 - t3 ).count()/1e9);
+//    printf("Time Ransac %f\n", ( t4 - t3 ).count()/1e9);
 
     auto t5 = std::chrono::high_resolution_clock::now();
     // Clear vectors
@@ -716,9 +594,7 @@ void ImageProcessor::trackFeatures() {
         pts_lifetime_.push_back(tracked_points_lifetime_map[id]);
     }
     auto t6 = std::chrono::high_resolution_clock::now();
-    printf("Time Populating %f\n", ( t4 - t3 ).count()/1e9);
-
-//    printf("Features after tracking: %zu\n", prev_pts_.size());
+//    printf("Time Populating %f\n", ( t4 - t3 ).count()/1e9);
 }
 
 
@@ -828,47 +704,49 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
 
 
 void ImageProcessor::publish() {
-    // Colors for different features.
-    Scalar tracked(255, 0, 0);
-    Scalar new_feature(0, 255, 0);
+    if (processor_config.publish_features) {
+        // Colors for different features.
+        Scalar tracked(255, 0, 0);
+        Scalar new_feature(0, 255, 0);
 
-    // Create an output image.
-    int img_height = curr_img_ptr->image.rows;
-    int img_width = curr_img_ptr->image.cols;
-    Mat out_img(img_height, img_width, CV_8UC3);
-    cvtColor(curr_img_ptr->image, out_img, COLOR_GRAY2RGB);
+        // Create an output image.
+        int img_height = curr_img_ptr->image.rows;
+        int img_width = curr_img_ptr->image.cols;
+        Mat out_img(img_height, img_width, CV_8UC3);
+        cvtColor(curr_img_ptr->image, out_img, COLOR_GRAY2RGB);
 
-    // Collect feature points in the previous frame, 
-    // and feature points in the current frame, 
-    // and lifetime of tracked features
-    map<FeatureIDType, Point2f> prev_points;
-    map<FeatureIDType, Point2f> curr_points;
-    map<FeatureIDType, int> points_lifetime;
+        // Collect feature points in the previous frame,
+        // and feature points in the current frame,
+        // and lifetime of tracked features
+        map<FeatureIDType, Point2f> prev_points;
+        map<FeatureIDType, Point2f> curr_points;
+        map<FeatureIDType, int> points_lifetime;
 
-    for (int i = 0; i < pts_ids_.size(); i++) {
-        prev_points[pts_ids_[i]] = prev_pts_[i];
-        curr_points[pts_ids_[i]] = curr_pts_[i];
-        points_lifetime[pts_ids_[i]] = pts_lifetime_[i];
-    }
-
-    // Draw tracked features.
-    for (const auto& id : pts_ids_) {
-        if (prev_points.find(id) != prev_points.end() &&
-            curr_points.find(id) != curr_points.end()) {
-            cv::Point2f prev_pt = prev_points[id];
-            cv::Point2f curr_pt = curr_points[id];
-            int life = points_lifetime[id];
-
-            double len = std::min(1.0, 1.0 * life / 50);
-            circle(out_img, curr_pt, 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 5);
-            line(out_img, prev_pt, curr_pt, Scalar(0,128,0));
-
-            prev_points.erase(id);
-            curr_points.erase(id);
+        for (int i = 0; i < pts_ids_.size(); i++) {
+            prev_points[pts_ids_[i]] = prev_pts_[i];
+            curr_points[pts_ids_[i]] = curr_pts_[i];
+            points_lifetime[pts_ids_[i]] = pts_lifetime_[i];
         }
-    }
 
-    visual_img = out_img;
+        // Draw tracked features.
+        for (const auto &id : pts_ids_) {
+            if (prev_points.find(id) != prev_points.end() &&
+                curr_points.find(id) != curr_points.end()) {
+                cv::Point2f prev_pt = prev_points[id];
+                cv::Point2f curr_pt = curr_points[id];
+                int life = points_lifetime[id];
+
+                double len = std::min(1.0, 1.0 * life / 50);
+                circle(out_img, curr_pt, 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 5);
+                line(out_img, prev_pt, curr_pt, Scalar(0, 128, 0));
+
+                prev_points.erase(id);
+                curr_points.erase(id);
+            }
+        }
+
+        visual_img = out_img;
+    }
 
     // Update last publish time and publish counter
     last_pub_time = curr_img_ptr->timeStampToSec;
