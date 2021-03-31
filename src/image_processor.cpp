@@ -330,6 +330,8 @@ bool ImageProcessor::initializeFirstFrame() {
     // Initialize last publish time
     last_pub_time = curr_img_ptr->timeStampToSec;
 
+    printf("Size points: %lu\n", current_tracked_points_map.size());
+
     if (current_tracked_points_map.size() > 20)
         return true;
     else
@@ -339,6 +341,7 @@ bool ImageProcessor::initializeFirstFrame() {
 
 bool ImageProcessor::trackFirstFeatures(
         const std::vector<ImuData>& imu_msg_buffer) {
+    printf("TrackFirstFeatures\n");
     // IDs of active features tracked
     std::vector<FeatureIDType> new_ids;
     std::vector<FeatureIDType> active_ids;
@@ -394,6 +397,9 @@ bool ImageProcessor::trackFirstFeatures(
         // Initial points (required by the estimator)
         tracked_points_initial_map[it.first] = cv::Point2f(-1, -1);
     }
+
+    printf("TrackFirstFeatures %zu\n", previous_tracked_points.size());
+
 
     // Return if not enough inliers
     if (previous_tracked_points.size() < 20)
@@ -452,6 +458,8 @@ bool ImageProcessor::trackFirstFeatures(
     removeUnmarkedElements(
             current_tracked_points, desc_inliers, curr_pts_inlier);
 
+    printf("TrackFirstFeatures %zu\n", prev_pts_inlier.size());
+
     // Return if not enough inliers
     if (prev_pts_inlier.size() < 20)
         return false;
@@ -479,6 +487,8 @@ bool ImageProcessor::trackFirstFeatures(
     removeUnmarkedElements(prev_pts_inlier, ransac_inliers,prev_pts_matched);
     removeUnmarkedElements(curr_pts_inlier, ransac_inliers, curr_pts_matched);
     removeUnmarkedElements(active_ids_inlier, ransac_inliers, active_ids_matched);
+
+    printf("TrackFirstFeatures %zu\n", curr_pts_matched.size());
 
     // Features initialized failed if less than 20 inliers are tracked
     if (curr_pts_matched.size() < 20)
