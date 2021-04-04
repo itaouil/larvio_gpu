@@ -206,7 +206,6 @@ void ImageProcessor::trackImage(
     // and the value the (x,y) coordinate point of the feature
     for (std::size_t i = 0; i < l_frame->num_features_; ++i)
     {
-        //printf("Track ID: %d\n", l_frame->track_id_vec_[i]);
         points[l_frame->track_id_vec_[i]] = cv::Point2f((int)l_frame->px_vec_.col(i)[0], (int)l_frame->px_vec_.col(i)[1]);
     }
 }
@@ -532,8 +531,6 @@ void ImageProcessor::trackFeatures() {
         return;
     }
 
-    //TODO: IMU pre-integration
-
     auto t1 = std::chrono::high_resolution_clock::now();
 
     // IDs of actively tracked features
@@ -597,8 +594,6 @@ void ImageProcessor::trackFeatures() {
     // Number of features left after tracking.
     after_tracking = current_tracked_points.size();
 
-    printf("1\n");
-
     // debug log
     if (0 == after_tracking) {
         printf("No feature is tracked !");
@@ -611,8 +606,6 @@ void ImageProcessor::trackFeatures() {
         return;
     }
 
-    printf("2\n");
-
     auto t2 = std::chrono::high_resolution_clock::now();
 //    printf("Time Tracking %f\n", ( t2 - t1 ).count()/1e9);
 
@@ -624,14 +617,11 @@ void ImageProcessor::trackFeatures() {
         cerr << "error happen while compute descriptors" << endl;
         return;
     }
-    printf("3\n");
 
     // Push new points descriptors to hashmap
     for (int i = 0; i < new_tracked_points.size(); i++) {
         tracked_points_descriptor_map[new_ids[i]] =  newDescriptors.row(i);
     }
-
-    printf("3\n");
 
     // Mark as outliers if descriptor distance is too large
     Mat currDescriptors;
@@ -647,8 +637,6 @@ void ImageProcessor::trackFeatures() {
         return;
     }
 
-    printf("9\n");
-
     // Compute descriptor distances
     vector<int> vDis;
     for (int j = 0; j < currDescriptors.rows; ++j) {
@@ -657,16 +645,12 @@ void ImageProcessor::trackFeatures() {
         vDis.push_back(dis);
     }
 
-    printf("10\n");
-
     // Compute inliers based on descriptor distance
     vector<unsigned char> desc_inliers(previous_tracked_points.size(), 0);
     for (int i = 0; i < previous_tracked_points.size(); i++) {
         if (vDis[i]<=processor_config.max_distance)
             desc_inliers[i] = 1;
     }
-
-    printf("11\n");
 
     // Remove outliers
     vector<Point2f> prev_pts_inlier(0);
@@ -678,8 +662,6 @@ void ImageProcessor::trackFeatures() {
             previous_tracked_points, desc_inliers, prev_pts_inlier);
     removeUnmarkedElements(
             current_tracked_points, desc_inliers, curr_pts_inlier);
-
-    printf("12\n");
 
     // Return if not enough inliers
     if (prev_pts_inlier.empty()){

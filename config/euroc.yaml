@@ -86,7 +86,7 @@ reset_fej_threshold: 10.11
 
 # zupt settings
 if_ZUPT_valid: 1    # 0(false) or 1(true)
-zupt_max_feature_dis: 2e-3
+zupt_max_feature_dis: 5e-3
 zupt_noise_v: 1e-2    # std
 zupt_noise_p: 1e-2
 zupt_noise_q: 3.4e-2

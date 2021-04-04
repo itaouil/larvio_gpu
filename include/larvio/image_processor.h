@@ -278,9 +278,6 @@ private:
   // Indicate if this is the first or second image message.
   eImageState image_state;
 
-  // ID for the next new feature.
-  FeatureIDType next_feature_id;
-
   // Feature detector
   ProcessorConfig processor_config;
 
@@ -297,8 +294,7 @@ private:
   // Take a vector from prev cam frame to curr cam frame
   cv::Matx33f R_Prev2Curr;
 
-  // Previous and current images
-  ImageDataPtr prev_img_ptr;
+  // Current image
   ImageDataPtr curr_img_ptr;
 
   // Number of features after each outlier removal step.
