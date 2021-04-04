@@ -47,6 +47,8 @@ bool StaticInitializer::tryIncInit(const std::vector<ImuData>& imu_msg_buffer,
   for (int i = 0; i < 19; i++)  
     itr--;
   double maxDis = *itr;
+//    printf("Max feature distance allowed. %f\n",max_feature_dis);
+//    printf("Actual distance %f\n",maxDis);
   // classified as static image if maxDis is smaller than threshold, otherwise reset image counter
   if (maxDis < max_feature_dis) {
     staticImgCounter++;
@@ -55,8 +57,6 @@ bool StaticInitializer::tryIncInit(const std::vector<ImuData>& imu_msg_buffer,
       return false;
   } else {
 //    printf("inclinometer-initializer failed at No.%d static image.\n",staticImgCounter+1);
-//    printf("Max feature distance allowed. %f\n",max_feature_dis);
-//    printf("Actual distance %f\n",maxDis);
     staticImgCounter = 0;
     return false;
   }

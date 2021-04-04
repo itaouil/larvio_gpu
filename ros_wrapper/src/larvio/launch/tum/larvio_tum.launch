@@ -8,7 +8,7 @@
   <group ns="$(arg robot)">
     <node pkg="nodelet" type="nodelet" name="system"
       args='standalone larvio/SystemNodelet'
-      output="screen">
+      output="log">
 
       <param name="fixed_frame_id" value="$(arg fixed_frame_id)"/>
       <param name="child_frame_id" value="odom"/>

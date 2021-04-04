@@ -134,7 +134,7 @@ bool ImageProcessor::initializeVilib() {
     l_feature_tracker_options.affine_est_offset = false;
     l_feature_tracker_options.reset_before_detection = false;
     l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
-    l_feature_tracker_options.min_tracks_to_detect_new_features = l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.5 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -521,16 +521,6 @@ bool ImageProcessor::trackFirstFeatures(
 
 
 void ImageProcessor::trackFeatures() {
-    // Number of the features before tracking.
-    before_tracking = prev_pts_.size();
-
-    // Abort tracking if there is no
-    // features in the previous frame.
-    if (0 == before_tracking) {
-        printf("No feature in prev img !\n");
-        return;
-    }
-
     auto t1 = std::chrono::high_resolution_clock::now();
 
     // IDs of actively tracked features

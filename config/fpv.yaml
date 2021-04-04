@@ -46,7 +46,7 @@ pyramid_levels: 2
 fast_threshold: 30
 publish_features: 1
 ransac_threshold: 1
-max_features_num: 100
+max_features_num: 200
 
 # window size
 sw_size: 10
@@ -86,7 +86,7 @@ if_ZUPT_valid: 1    # 0(false) or 1(true)
 zupt_noise_v: 1e-2    # std
 zupt_noise_p: 1e-2
 zupt_noise_q: 3.4e-2
-zupt_max_feature_dis: 2e-3
+zupt_max_feature_dis: 4e-3
 
 # static initialization setting
 static_duration: 1.0

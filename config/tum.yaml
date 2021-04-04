@@ -1,11 +1,11 @@
 %YAML:1.0
 
 # output directory
-output_dir: "/root/larvio_results/"
+output_dir: "/home/itaouil/datasets/VIO/TUM/"
 
 # switches
 if_FEJ: 1    # 0(false) or 1(true)
-estimate_extrin: 0    # 0(false) or 1(true)
+estimate_extrin: 1    # 0(false) or 1(true)
 estimate_td: 1    # 0(false) or 1(true)
 calib_imu_instrinsic: 0    # 0(false) or 1(true)
 
@@ -40,16 +40,13 @@ td: 0.0
 # TODO: if calibrate camera instrinsic online
 
 # visual front-end parameters
+max_distance: 58
+pub_frequency: 25
 pyramid_levels: 2
-patch_size: 21
 fast_threshold: 30
-max_iteration: 30
-track_precision: 0.01
+publish_features: 1
 ransac_threshold: 1
 max_features_num: 200
-min_distance: 25
-flag_equalize: 1    # 0(false) or 1(true)
-pub_frequency: 30
 
 # window size
 sw_size: 15
@@ -86,7 +83,7 @@ reset_fej_threshold: 10.11
 
 # zupt settings
 if_ZUPT_valid: 1    # 0(false) or 1(true)
-zupt_max_feature_dis: 2e-3
+zupt_max_feature_dis: 0.01
 zupt_noise_v: 1e-2    # std
 zupt_noise_p: 1e-2
 zupt_noise_q: 3.4e-2
