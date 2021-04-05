@@ -162,6 +162,12 @@ private:
   void clearDeadFeatures();
 
     /*
+   * @brief applyClahe
+   *    Apply adaptive histogram equalization
+   */
+  void applyClahe();
+
+    /*
    * @brief trackImage
    *    Perform tracking on GPU using a detection
    *    algorithm also no the GPU and the current image

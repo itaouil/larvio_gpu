@@ -315,8 +315,9 @@ bool LarVio::initialize() {
   if (!loadParameters()) return false;
 
   // debug log
-  fImuState.open((output_dir+"msckf_2_state.txt").c_str(), ofstream::trunc);
-  fTakeOffStamp.open((output_dir+"msckf_2_takeoff.txt").c_str(), ofstream::trunc);
+  fImuState.open((output_dir+"stamped_traj_estimate.txt").c_str(), ofstream::trunc);
+  fImuState.setf(ios_base::fixed);
+  //fTakeOffStamp.open((output_dir+"msckf_2_takeoff.txt").c_str(), ofstream::trunc);
 
   // Initialize state server
   state_server.continuous_noise_cov =
@@ -371,8 +372,6 @@ bool LarVio::processFeatures(MonoCameraMeasurementPtr msg,
           return false;
   }
 
-  printf("Gravity vector not yet set...");
-
   // Return if the gravity vector has not been set.
   if (!is_gravity_set) {
       if (flexInitPtr->tryIncInit(imu_msg_buffer, msg,
@@ -392,8 +391,6 @@ bool LarVio::processFeatures(MonoCameraMeasurementPtr msg,
       else
         return false;		
   }
-
-    printf("Gravity vector set...");
 
   // Propogate the IMU state.
   // that are received before the image msg.
@@ -448,14 +445,17 @@ bool LarVio::processFeatures(MonoCameraMeasurementPtr msg,
   double tx = state_server.imu_state.t_cam0_imu(0);
   double ty = state_server.imu_state.t_cam0_imu(1);
   double tz = state_server.imu_state.t_cam0_imu(2);
-  fImuState << state_server.imu_state.time-take_off_stamp << " "
-      << qw << " " << qx << " " << qy << " " << qz << " "
-      << vx << " " << vy << " " << vz << " "
-      << px << " " << py << " " << pz << " "
-      << bgx << " " << bgy << " " << bgz << " "
-      << bax << " " << bay << " " << baz << " "
-      << qbcw << " " << qbcx << " " << qbcy << " " << qbcz << " "
-      << tx << " " << ty << " " << tz << endl;
+//  fImuState << state_server.imu_state.time-take_off_stamp << " "
+//      << qw << " " << qx << " " << qy << " " << qz << " "
+//      << vx << " " << vy << " " << vz << " "
+//      << px << " " << py << " " << pz << " "
+//      << bgx << " " << bgy << " " << bgz << " "
+//      << bax << " " << bay << " " << baz << " "
+//      << qbcw << " " << qbcx << " " << qbcy << " " << qbcz << " "
+//      << tx << " " << ty << " " << tz << endl;
+    fImuState << state_server.imu_state.time << " "
+        << px << " " << py << " " << pz << " "
+        << qx << " " << qy << " " << qz << " " << qw << endl;
 
   // Update active_slam_features for visualization
   for (auto fid : state_server.feature_states) {
