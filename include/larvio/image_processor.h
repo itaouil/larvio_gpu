@@ -58,7 +58,7 @@
 #define FEATURE_DETECTOR_FAST 0
 #define FEATURE_DETECTOR_HARRIS 1
 #define FEATURE_DETECTOR_SHI_TOMASI 2
-#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_HARRIS
+#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_SHI_TOMASI
 
 // FAST parameters
 #define FEATURE_DETECTOR_FAST_EPISLON 25.f
@@ -160,6 +160,12 @@ private:
    *    in the next frame.
    */
   void clearDeadFeatures();
+
+    /*
+   * @brief applyClahe
+   *    Apply histogram equalization
+   */
+  void applyClahe();
 
     /*
    * @brief trackImage

@@ -51,6 +51,7 @@ bool ImageProcessor::loadParameters() {
     processor_config.fast_threshold = fsSettings["fast_threshold"];
     processor_config.pyramid_levels = fsSettings["pyramid_levels"];
     processor_config.max_features_num = fsSettings["max_features_num"];
+    processor_config.flag_equalize = static_cast<int>(fsSettings["flag_equalize"]) != 0;
     processor_config.publish_features = static_cast<int>(fsSettings["publish_features"]) != 0;
 
     // Output files directory
@@ -128,14 +129,24 @@ void ImageProcessor::rescalePoints(
     }
 }
 
+void ImageProcessor::applyClahe() {
+    const Mat& curr_img = curr_img_ptr->image;
+
+    // CLAHE
+    if (processor_config.flag_equalize) {
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));
+        clahe->apply(curr_img, curr_img);
+    }
+}
+
 
 bool ImageProcessor::initializeVilib() {
     FeatureTrackerOptions l_feature_tracker_options;
     l_feature_tracker_options.affine_est_gain = false;
-    l_feature_tracker_options.affine_est_offset = true;
+    l_feature_tracker_options.affine_est_offset = false;
     l_feature_tracker_options.reset_before_detection = false;
     l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
-    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.8 * l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.5 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -252,6 +263,9 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
     }
 
     curr_img_ptr = msg;
+
+    // Apply adaptive histogram equalization
+    applyClahe();
 
     // Get current image time
     curr_img_time = curr_img_ptr->timeStampToSec;
