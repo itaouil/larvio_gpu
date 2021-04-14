@@ -1,0 +1,106 @@
+%YAML:1.0
+
+# output directory
+output_dir: "/home/itaouil/datasets/VIO/FPV/indoor_forward/indoor_forward_7_vilib/pc-no-clahe/"
+
+# switches
+if_FEJ: 1    # 0(false) or 1(true)
+estimate_td: 1    # 0(false) or 1(true)
+estimate_extrin: 0    # 0(false) or 1(true)
+calib_imu_instrinsic: 1    # 0(false) or 1(true)
+
+# camera instrinsic
+camera_model: "pinhole"       # only support "pinhole"
+distortion_model: "equidistant"    # only support "radtan" and "equidistant"
+resolution_width: 848
+resolution_height: 480
+intrinsics:
+   fx: 430.68606300975074
+   fy: 431.90913478691783
+   cx: 422.9153331380377
+   cy: 244.33920253120752
+distortion_coeffs:
+   k1: 0.3220227941871416
+   k2: -0.03814113307285955
+   p1: 0.6327185493354971
+   p2: -0.45741009355667656
+
+# imu-camera extrinsic, including spacial and temporal parameters
+T_cam_imu: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data:
+    [0.9999960,  0.0019960, -0.0020040, 0.029,
+     -0.0020040,  0.9999900, -0.0039980, 0.007,
+     0.0019960,  0.0040020,  0.9999900, 0.016,
+     0.0, 0.0, 0.0, 1.0]
+td: 0.0
+
+# TODO: if calibrate camera instrinsic online
+
+# visual front-end parameters
+flag_equalize: 0
+max_distance: 68
+pub_frequency: 35
+pyramid_levels: 2
+fast_threshold: 30
+publish_features: 1
+ransac_threshold: 1
+max_features_num: 200
+
+# window size
+sw_size: 10
+
+# online reset thresholds
+position_std_threshold: 8.0
+rotation_threshold: 0.2618
+translation_threshold: 0.4
+tracking_rate_threshold: 0.5
+
+# feature triangulation parameters
+max_track_len: 10
+least_observation_number: 3
+feature_translation_threshold: -1.0
+
+# imu and camera measurement noise parameters
+noise_acc: 0.08
+noise_gyro: 0.004
+noise_feature: 0.008
+noise_acc_bias: 4e-5
+noise_gyro_bias: 2e-6
+
+# filter intial covariance
+initial_covariance_acc_bias: 0.01
+initial_covariance_velocity: 0.25
+initial_covariance_position: 1.0
+initial_covariance_gyro_bias: 4e-4
+initial_covariance_extrin_rot: 3.0462e-8
+initial_covariance_orientation: 4e-4
+initial_covariance_extrin_trans: 9e-8
+
+# fej settings
+reset_fej_threshold: 10.11
+
+# zupt settings
+if_ZUPT_valid: 1    # 0(false) or 1(true)
+zupt_noise_v: 1e-2    # std
+zupt_noise_p: 1e-2
+zupt_noise_q: 3.4e-2
+zupt_max_feature_dis: 4e-3
+
+# static initialization setting
+static_duration: 1.0
+
+# measurement rate
+imu_rate: 400
+img_rate: 60
+
+# augmented feature state settings
+max_features_in_one_grid: 1     # pure msckf if set to 0
+aug_grid_rows: 5
+aug_grid_cols: 6
+feature_idp_dim: 1              # 1 or 3
+
+# if apply Schmidt filter
+use_schmidt: 0    # 0(false) or 1(true)
