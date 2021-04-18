@@ -9,10 +9,10 @@
   <group ns="$(arg robot)">
     <node pkg="nodelet" type="nodelet" name="system"
       args='standalone larvio/SystemNodelet'
-      output="screen">
+      output="log">
 
       <param name="fixed_frame_id" value="$(arg fixed_frame_id)"/>
-      <param name="child_frame_id" value="odom"/>
+      <param name="child_frame_id" value="d455_color_optical_frame"/>
 
       <remap from="~imu" to="/imu0"/>
       <remap from="~cam0_image" to="/cam0/image_raw"/>

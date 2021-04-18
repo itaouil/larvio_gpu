@@ -544,7 +544,7 @@ void ImageProcessor::trackFeatures() {
     // Abort tracking if there is no features in
     // the previous frame.
     if (0 == before_tracking) {
-        printf("No feature in prev img !\n");
+//        printf("No feature in prev img !\n");
         return;
     }
 
@@ -602,7 +602,7 @@ void ImageProcessor::trackFeatures() {
 
     // debug log
     if (0 == after_tracking) {
-        printf("No feature is tracked !");
+//        printf("No feature is tracked !");
         vector<Point2f>().swap(prev_pts_);
         vector<Point2f>().swap(curr_pts_);
         vector<FeatureIDType>().swap(pts_ids_);
@@ -663,7 +663,7 @@ void ImageProcessor::trackFeatures() {
     after_tracking = curr_inImg_points.size();
     // debug log
     if (0 == after_tracking) {
-        printf("No feature is tracked !");
+        //printf("No feature is tracked !");
         vector<Point2f>().swap(prev_pts_);
         vector<Point2f>().swap(curr_pts_);
         vector<FeatureIDType>().swap(pts_ids_);
@@ -720,7 +720,7 @@ void ImageProcessor::trackFeatures() {
 
     // Return if not enough inliers
     if ( prev_tracked_points.size()==0 ){
-        printf("No feature is tracked after descriptor matching!\n");
+        //printf("No feature is tracked after descriptor matching!\n");
         vector<Point2f>().swap(prev_pts_);
         vector<Point2f>().swap(curr_pts_);
         vector<FeatureIDType>().swap(pts_ids_);
@@ -781,7 +781,7 @@ void ImageProcessor::trackFeatures() {
 
     // debug log
     if (0 == after_ransac) {
-        printf("No feature survive after RANSAC !");
+        //printf("No feature survive after RANSAC !");
         vector<Point2f>().swap(prev_pts_);
         vector<Point2f>().swap(curr_pts_);
         vector<FeatureIDType>().swap(pts_ids_);
@@ -1125,18 +1125,18 @@ void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
             }
         }
 
-        printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
-        printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
-        printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
-        printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
-        printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
-        printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
-        printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
-        printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
-        printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
+        //printf("Feature message id: %llu\n", feature_msg_ptr->features[i].id);
+        //printf("Feature message u: %f\n", feature_msg_ptr->features[i].u);
+        //printf("Feature message v: %f\n", feature_msg_ptr->features[i].v);
+        //printf("Feature message u_vel: %f\n", feature_msg_ptr->features[i].u_vel);
+        //printf("Feature message v_vel: %f\n", feature_msg_ptr->features[i].v_vel);
+        //printf("Feature message u_init: %f\n", feature_msg_ptr->features[i].u_init);
+        //printf("Feature message v_init: %f\n", feature_msg_ptr->features[i].v_init);
+        //printf("Feature message u_init_vel: %f\n", feature_msg_ptr->features[i].u_init_vel);
+        //printf("Feature message v_init_vel: %f\n", feature_msg_ptr->features[i].v_init_vel);
     }
 
-    printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
+    //printf("Feature message size: %zu\n", feature_msg_ptr->features.size());
 }
 
 

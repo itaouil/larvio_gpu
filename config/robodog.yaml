@@ -1,13 +1,13 @@
 %YAML:1.0
 
 # output directory
-output_dir: "/root/larvio_results/"
+output_dir: "/home/itaouil/datasets/VIO/Robodog/"
 
 # switches
 if_FEJ: 1    # 0(false) or 1(true)
-estimate_extrin: 1    # 0(false) or 1(true)
 estimate_td: 1    # 0(false) or 1(true)
-calib_imu_instrinsic: 0    # 0(false) or 1(true)
+estimate_extrin: 1    # 0(false) or 1(true)
+calib_imu_instrinsic: 1    # 0(false) or 1(true)
 
 # camera instrinsic
 camera_model: "pinhole"       # only support "pinhole"
@@ -15,15 +15,15 @@ distortion_model: "equidistant"    # only support "radtan" and "equidistant"
 resolution_width: 848
 resolution_height: 480
 intrinsics:
-   fx: 423.46014404296875
-   fy: 422.3664245605469
-   cx: 420.8778076171875
-   cy: 242.57615661621094
+   fx: 430.68606300975074
+   fy: 431.90913478691783
+   cx: 422.9153331380377
+   cy: 244.33920253120752
 distortion_coeffs:
-   k1: -0.05572371557354927
-   k2: 0.06307043880224228
-   p1: -0.0012400213163346052
-   p2: -0.0008199785370379686
+   k1: 0.3220227941871416
+   k2: -0.03814113307285955
+   p1: 0.6327185493354971
+   p2: -0.45741009355667656
 
 # imu-camera extrinsic, including spacial and temporal parameters
 T_cam_imu: !!opencv-matrix
@@ -31,7 +31,10 @@ T_cam_imu: !!opencv-matrix
    cols: 4
    dt: d
    data:
-    [0.9999960,  0.0019960, -0.0020040, 0.029, -0.0020040,  0.9999900, -0.0039980, 0.007, 0.0019960,  0.0040020,  0.9999900, 0.016, 0.0, 0.0, 0.0, 1.]
+     [0.9999960,  0.0019960, -0.0020040, 0.029,
+      -0.0020040,  0.9999900, -0.0039980, 0.007,
+      0.0019960,  0.0040020,  0.9999900, 0.016,
+      0.0, 0.0, 0.0, 1.0]
 td: 0.0
 
 # TODO: if calibrate camera instrinsic online
@@ -43,10 +46,10 @@ fast_threshold: 30
 max_iteration: 30
 track_precision: 0.01
 ransac_threshold: 1
-max_features_num: 230
+max_features_num: 200
 min_distance: 15
 flag_equalize: 1    # 0(false) or 1(true)
-pub_frequency: 35
+pub_frequency: 65
 
 # window size
 sw_size: 10
