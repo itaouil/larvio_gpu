@@ -41,35 +41,6 @@
 #include "vilib/feature_tracker/feature_tracker_base.h"
 #include "vilib/feature_tracker/feature_tracker_options.h"
 
-// Vilib Parameters
-
-// Frame options
-#define FRAME_IMAGE_PYRAMID_LEVELS 5
-
-// Feature detection options
-#define FEATURE_DETECTOR_MIN_LEVEL 0
-#define FEATURE_DETECTOR_MAX_LEVEL 2
-#define FEATURE_DETECTOR_VERTICAL_BORDER 8
-#define FEATURE_DETECTOR_HORIZONTAL_BORDER 8
-#define FEATURE_DETECTOR_CELL_SIZE_WIDTH 32
-#define FEATURE_DETECTOR_CELL_SIZE_HEIGHT 32
-
-// Feature detector selection
-#define FEATURE_DETECTOR_FAST 0
-#define FEATURE_DETECTOR_HARRIS 1
-#define FEATURE_DETECTOR_SHI_TOMASI 2
-#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_SHI_TOMASI
-
-// FAST parameters
-#define FEATURE_DETECTOR_FAST_EPISLON 25.f
-#define FEATURE_DETECTOR_FAST_ARC_LENGTH 18
-#define FEATURE_DETECTOR_FAST_SCORE SUM_OF_ABS_DIFF_ON_ARC
-
-// Harris/Shi-Tomasi parameters
-#define FEATURE_DETECTOR_HARRIS_K 0.04f
-#define FEATURE_DETECTOR_HARRIS_QUALITY_LEVEL 0.01f
-#define FEATURE_DETECTOR_HARRIS_BORDER_TYPE conv_filter_border_type::BORDER_SKIP
-
 namespace larvio {
 
 /*

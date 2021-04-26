@@ -18,6 +18,35 @@
 // OpenCV
 #include <opencv2/core/utility.hpp>
 
+// Vilib Parameters
+
+// Frame options
+#define FRAME_IMAGE_PYRAMID_LEVELS 5
+
+// Feature detection options
+#define FEATURE_DETECTOR_MIN_LEVEL 0
+#define FEATURE_DETECTOR_MAX_LEVEL 2
+#define FEATURE_DETECTOR_VERTICAL_BORDER 8
+#define FEATURE_DETECTOR_HORIZONTAL_BORDER 8
+#define FEATURE_DETECTOR_CELL_SIZE_WIDTH 32
+#define FEATURE_DETECTOR_CELL_SIZE_HEIGHT 32
+
+// Feature detector selection
+#define FEATURE_DETECTOR_FAST 0
+#define FEATURE_DETECTOR_HARRIS 1
+#define FEATURE_DETECTOR_SHI_TOMASI 2
+#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_SHI_TOMASI
+
+// FAST parameters
+#define FEATURE_DETECTOR_FAST_EPISLON 25.f
+#define FEATURE_DETECTOR_FAST_ARC_LENGTH 18
+#define FEATURE_DETECTOR_FAST_SCORE SUM_OF_ABS_DIFF_ON_ARC
+
+// Harris/Shi-Tomasi parameters
+#define FEATURE_DETECTOR_HARRIS_K 0.04f
+#define FEATURE_DETECTOR_HARRIS_QUALITY_LEVEL 0.01f
+#define FEATURE_DETECTOR_HARRIS_BORDER_TYPE conv_filter_border_type::BORDER_SKIP
+
 using namespace cv;
 using namespace std;
 using namespace vilib;
@@ -146,7 +175,7 @@ bool ImageProcessor::initializeVilib() {
     l_feature_tracker_options.affine_est_offset = false;
     l_feature_tracker_options.reset_before_detection = false;
     l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
-    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.5 * l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features = 0.7 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
