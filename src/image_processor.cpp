@@ -47,7 +47,6 @@ bool ImageProcessor::loadParameters() {
     // Read config parameters
     processor_config.max_distance = fsSettings["max_distance"];
     processor_config.pub_frequency = fsSettings["pub_frequency"];
-    processor_config.fast_threshold = fsSettings["fast_threshold"];
     processor_config.pyramid_levels = fsSettings["pyramid_levels"];
     processor_config.max_features_num = fsSettings["max_features_num"];
     processor_config.flag_equalize = static_cast<int>(fsSettings["flag_equalize"]) != 0;
