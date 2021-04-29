@@ -40,17 +40,10 @@ td: 0.0
 # TODO: if calibrate camera instrinsic online
 
 # visual front-end parameters
-publish_features: 1
-pyramid_levels: 2
-patch_size: 15
-fast_threshold: 30
-max_iteration: 30
-track_precision: 0.01
-ransac_threshold: 1
-max_features_num: 200
-min_distance: 15
-flag_equalize: 0
+flag_equalize: 1
 pub_frequency: 65
+publish_features: 1
+max_features_num: 230
 
 # window size
 sw_size: 10
@@ -62,8 +55,8 @@ translation_threshold: 0.4
 tracking_rate_threshold: 0.5
 
 # feature triangulation parameters
-least_observation_number: 3
 max_track_len: 10
+least_observation_number: 3
 feature_translation_threshold: -1.0
 
 # imu and camera measurement noise parameters
