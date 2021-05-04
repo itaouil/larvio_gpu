@@ -262,10 +262,12 @@ private:
   ProcessorConfig processor_config;
 
   // Camera calibration parameters
+  std::string camera_model;
   cv::Vec2i cam_resolution;
   cv::Vec4d cam_intrinsics;
   cv::Vec4d cam_distortion_coeffs;
   std::string cam_distortion_model;
+  cv::Vec4d plumb_bob_distortion_coeffs;
 
   // Take a vector from cam frame to the IMU frame.
   cv::Vec3d t_cam_imu;

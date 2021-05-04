@@ -90,6 +90,9 @@ bool ImageProcessor::loadParameters() {
      * Camera calibration parameters
      */
 
+    // Camera model
+    fsSettings["camera_model"] >> camera_model;
+
     // Distortion model
     fsSettings["distortion_model"] >> cam_distortion_model;
 
@@ -106,11 +109,20 @@ bool ImageProcessor::loadParameters() {
 
     // Distortion coefficient
     cv::FileNode n_distort = fsSettings["distortion_coeffs"];
+
+    // Distortion coefficient (pinhole)
     cam_distortion_coeffs[0] = static_cast<double>(n_distort["k1"]);
     cam_distortion_coeffs[1] = static_cast<double>(n_distort["k2"]);
     cam_distortion_coeffs[2] = static_cast<double>(n_distort["p1"]);
     cam_distortion_coeffs[3] = static_cast<double>(n_distort["p2"]);
-    
+
+    // Distortion coefficient (plumb bob)
+    plumb_bob_distortion_coeffs[0] = static_cast<double>(n_distort["k1"]);
+    plumb_bob_distortion_coeffs[1] = static_cast<double>(n_distort["k2"]);
+    plumb_bob_distortion_coeffs[2] = static_cast<double>(n_distort["p1"]);
+    plumb_bob_distortion_coeffs[3] = static_cast<double>(n_distort["p2"]);
+    plumb_bob_distortion_coeffs[4] = static_cast<double>(n_distort["k3"]);
+
     // Extrinsic between camera and IMU
     cv::Mat T_imu_cam;
     fsSettings["T_cam_imu"] >> T_imu_cam;
@@ -175,7 +187,7 @@ bool ImageProcessor::initializeVilib() {
     l_feature_tracker_options.affine_est_offset = false;
     l_feature_tracker_options.reset_before_detection = false;
     l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
-    l_feature_tracker_options.min_tracks_to_detect_new_features =  1.0 * l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features =  0.7 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -661,15 +673,27 @@ void ImageProcessor::undistortPoints(
             0.0, new_intrinsics[1], new_intrinsics[3],
             0.0, 0.0, 1.0);
 
-    if (distortion_model == "radtan") {
-        cv::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
-                            rectification_matrix, K_new);       
-    } else if (distortion_model == "equidistant") {
-        cv::fisheye::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
-                                     rectification_matrix, K_new);
-    } else {
-        printf("The model %s is unrecognized, use radtan instead...\n",
-                      distortion_model.c_str());
+    if (camera_model == "plumb_bob") {
+        cv::undistortPoints(pts_in, pts_out, K, plumb_bob_distortion_coeffs,
+                            rectification_matrix, K_new);
+    }
+    else if (camera_model == "pinhole") {
+        if (distortion_model == "radtan") {
+            cv::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
+                                rectification_matrix, K_new);
+        } else if (distortion_model == "equidistant") {
+            cv::fisheye::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
+                                         rectification_matrix, K_new);
+        } else {
+            printf("The distortion model %s is unrecognized, use pinhole radtan instead...\n",
+                   distortion_model.c_str());
+            cv::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
+                                rectification_matrix, K_new);
+        }
+    }
+    else {
+        printf("The camera model %s is unrecognized, use pinhole radtan instead...\n",
+               distortion_model.c_str());
         cv::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
                             rectification_matrix, K_new);
     }

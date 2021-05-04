@@ -6,24 +6,25 @@ output_dir: "/home/itaouil/datasets/VIO/Robodog/"
 # switches
 if_FEJ: 1    # 0(false) or 1(true)
 estimate_td: 1    # 0(false) or 1(true)
-estimate_extrin: 1    # 0(false) or 1(true)
-calib_imu_instrinsic: 1    # 0(false) or 1(true)
+estimate_extrin: 0   # 0(false) or 1(true)
+calib_imu_instrinsic: 0    # 0(false) or 1(true)
 
 # camera instrinsic
-camera_model: "pinhole"       # only support "pinhole"
-distortion_model: "equidistant"    # only support "radtan" and "equidistant"
+camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
+distortion_model: ""    # only support "radtan" and "equidistant" for pinhole
 resolution_width: 848
 resolution_height: 480
 intrinsics:
-   fx: 430.68606300975074
-   fy: 431.90913478691783
-   cx: 422.9153331380377
-   cy: 244.33920253120752
+   fx: 423.46014404296875
+   fy: 420.8778076171875
+   cx: 422.3664245605469
+   cy: 242.57615661621094
 distortion_coeffs:
-   k1: 0.3220227941871416
-   k2: -0.03814113307285955
-   p1: 0.6327185493354971
-   p2: -0.45741009355667656
+   k1: -0.05572371557354927
+   k2: 0.06307043880224228
+   p1: -0.0012400213163346052
+   p2: -0.0008199785370379686
+   k3: -0.020160820335149765
 
 # imu-camera extrinsic, including spacial and temporal parameters
 T_cam_imu: !!opencv-matrix
@@ -40,7 +41,7 @@ td: 0.0
 # TODO: if calibrate camera instrinsic online
 
 # visual front-end parameters
-flag_equalize: 1
+flag_equalize: 0
 pub_frequency: 65
 publish_features: 1
 max_features_num: 230
@@ -60,30 +61,30 @@ least_observation_number: 3
 feature_translation_threshold: -1.0
 
 # imu and camera measurement noise parameters
-noise_gyro: 0.004
 noise_acc: 0.08
-noise_gyro_bias: 2e-6
+noise_gyro: 0.004
 noise_acc_bias: 4e-5
+noise_gyro_bias: 2e-6
 noise_feature: 0.008
 
 # filter intial covariance
-initial_covariance_orientation: 4e-4
 initial_covariance_velocity: 0.25
 initial_covariance_position: 1.0
-initial_covariance_gyro_bias: 4e-4
 initial_covariance_acc_bias: 0.01
-initial_covariance_extrin_rot: 3.0462e-8
+initial_covariance_gyro_bias: 4e-4
+initial_covariance_orientation: 4e-4
 initial_covariance_extrin_trans: 9e-8
+initial_covariance_extrin_rot: 3.0462e-8
 
 # fej settings
 reset_fej_threshold: 10.11
 
 # zupt settings
 if_ZUPT_valid: 1    # 0(false) or 1(true)
-zupt_max_feature_dis: 3e-3
 zupt_noise_v: 1e-2    # std
 zupt_noise_p: 1e-2
 zupt_noise_q: 3.4e-2
+zupt_max_feature_dis: 3e-3
 
 # static initialization setting
 static_duration: 1.0
