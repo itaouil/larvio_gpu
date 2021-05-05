@@ -6,8 +6,8 @@ output_dir: "/home/itaouil/datasets/VIO/Robodog/"
 # switches
 if_FEJ: 1    # 0(false) or 1(true)
 estimate_td: 1    # 0(false) or 1(true)
-estimate_extrin: 0   # 0(false) or 1(true)
-calib_imu_instrinsic: 0    # 0(false) or 1(true)
+estimate_extrin: 1   # 0(false) or 1(true)
+calib_imu_instrinsic: 1    # 0(false) or 1(true)
 
 # camera instrinsic
 camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
@@ -44,15 +44,15 @@ td: 0.0
 flag_equalize: 0
 pub_frequency: 65
 publish_features: 1
-max_features_num: 230
+max_features_num: 200
 
 # window size
 sw_size: 10
 
 # online reset thresholds
-position_std_threshold: 8.0
 rotation_threshold: 0.2618
 translation_threshold: 0.4
+position_std_threshold: 8.0
 tracking_rate_threshold: 0.5
 
 # feature triangulation parameters
@@ -64,8 +64,8 @@ feature_translation_threshold: -1.0
 noise_acc: 0.08
 noise_gyro: 0.004
 noise_acc_bias: 4e-5
-noise_gyro_bias: 2e-6
 noise_feature: 0.008
+noise_gyro_bias: 2e-6
 
 # filter intial covariance
 initial_covariance_velocity: 0.25
@@ -84,7 +84,7 @@ if_ZUPT_valid: 1    # 0(false) or 1(true)
 zupt_noise_v: 1e-2    # std
 zupt_noise_p: 1e-2
 zupt_noise_q: 3.4e-2
-zupt_max_feature_dis: 3e-3
+zupt_max_feature_dis: 2e-3
 
 # static initialization setting
 static_duration: 1.0
@@ -95,8 +95,8 @@ img_rate: 60
 
 # augmented feature state settings
 max_features_in_one_grid: 1     # pure msckf if set to 0
-aug_grid_rows: 5
-aug_grid_cols: 6
+aug_grid_rows: 4
+aug_grid_cols: 5
 feature_idp_dim: 1              # 1 or 3
 
 # if apply Schmidt filter

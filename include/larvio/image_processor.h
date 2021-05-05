@@ -116,6 +116,17 @@ private:
    */
   bool loadParameters();
 
+    /*
+   * @brief integrateImuData Integrates the IMU gyro readings
+   *    between the two consecutive images, which is used for
+   *    both tracking prediction and 2-point RANSAC.
+   * @param imu msg buffer
+   * @return cam_R_p2c: a rotation matrix which takes a vector
+   *    from previous cam0 frame to current cam0 frame.
+   */
+    void integrateImuData(cv::Matx33f& cam_R_p2c,
+                          const std::vector<ImuData>& imu_msg_buffer);
+
   /*
    * @brief initializeVilib
    *    Initialize the feature detector and tracker

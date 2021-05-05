@@ -24,18 +24,18 @@
 #define FRAME_IMAGE_PYRAMID_LEVELS 5
 
 // Feature detection options
+#define FEATURE_DETECTOR_CELL_SIZE_WIDTH 32
+#define FEATURE_DETECTOR_CELL_SIZE_HEIGHT 32
 #define FEATURE_DETECTOR_MIN_LEVEL 0
 #define FEATURE_DETECTOR_MAX_LEVEL 2
 #define FEATURE_DETECTOR_VERTICAL_BORDER 8
 #define FEATURE_DETECTOR_HORIZONTAL_BORDER 8
-#define FEATURE_DETECTOR_CELL_SIZE_WIDTH 32
-#define FEATURE_DETECTOR_CELL_SIZE_HEIGHT 32
 
 // Feature detector selection
 #define FEATURE_DETECTOR_FAST 0
 #define FEATURE_DETECTOR_HARRIS 1
 #define FEATURE_DETECTOR_SHI_TOMASI 2
-#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_SHI_TOMASI
+#define FEATURE_DETECTOR_USED FEATURE_DETECTOR_HARRIS
 
 // FAST parameters
 #define FEATURE_DETECTOR_FAST_EPISLON 25.f
@@ -260,7 +260,13 @@ void ImageProcessor::trackImage(
     for (std::size_t i = 0; i < l_frame->num_features_; ++i)
     {
         //printf("Track ID: %d\n", l_frame->track_id_vec_[i]);
-        points[l_frame->track_id_vec_[i]] = cv::Point2f((int)l_frame->px_vec_.col(i)[0], (int)l_frame->px_vec_.col(i)[1]);
+        points[l_frame->track_id_vec_[i]] = cv::Point2f(l_frame->px_vec_.col(i)[0], l_frame->px_vec_.col(i)[1]);
+
+        std::cout << "ID: " << l_frame->track_id_vec_[i] << std::endl;
+        std::cout << "X: " << l_frame->px_vec_.col(i)[0] << std::endl;
+        std::cout << "Y: " << l_frame->px_vec_.col(i)[1] << std::endl;
+//        std::cout << "X-float " << l_frame->px_vec_.col(i)[0] << std::endl;
+//        std::cout << "Y-float " << l_frame->px_vec_.col(i)[1] << std::endl;
     }
 }
 
@@ -285,6 +291,47 @@ void ImageProcessor::clearDeadFeatures() {
         tracked_points_lifetime_map.erase(id);
         previous_tracked_points_map.erase(id);
     }
+}
+
+void ImageProcessor::integrateImuData(Matx33f& cam_R_p2c,
+                                      const std::vector<ImuData>& imu_msg_buffer) {
+    // Find the start and the end limit within the imu msg buffer.
+    auto begin_iter = imu_msg_buffer.begin();
+    while (begin_iter != imu_msg_buffer.end()) {
+        if (begin_iter->timeStampToSec-
+            prev_img_ptr->timeStampToSec < -0.0049)
+            ++begin_iter;
+        else
+            break;
+    }
+
+    auto end_iter = begin_iter;
+    while (end_iter != imu_msg_buffer.end()) {
+        if (end_iter->timeStampToSec-
+            curr_img_ptr->timeStampToSec < 0.0049)
+            ++end_iter;
+        else
+            break;
+    }
+
+    // Compute the mean angular velocity in the IMU frame.
+    Vec3f mean_ang_vel(0.0, 0.0, 0.0);
+    for (auto iter = begin_iter; iter < end_iter; ++iter)
+        mean_ang_vel += Vec3f(iter->angular_velocity[0],
+                              iter->angular_velocity[1], iter->angular_velocity[2]);
+
+    if (end_iter-begin_iter > 0)
+        mean_ang_vel *= 1.0f / (end_iter-begin_iter);
+
+    // Transform the mean angular velocity from the IMU
+    // frame to the cam0 and cam1 frames.
+    Vec3f cam_mean_ang_vel = R_cam_imu.t() * mean_ang_vel;
+
+    // Compute the relative rotation.
+    double dtime = curr_img_ptr->timeStampToSec-
+                   prev_img_ptr->timeStampToSec;
+    Rodrigues(cam_mean_ang_vel*dtime, cam_R_p2c);
+    cam_R_p2c = cam_R_p2c.t();
 }
 
 
@@ -336,6 +383,9 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
             image_state = OTHER_IMAGES;
         }
     } else if ( OTHER_IMAGES==image_state ) {
+        // Integrate gyro data to get a guess of rotation between current and previous image
+//        integrateImuData(R_Prev2Curr, imu_msg_buffer);
+
         // Tracking features
         auto t1 = std::chrono::high_resolution_clock::now();
         trackFeatures();
@@ -361,6 +411,7 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
     }
 
     // Update times
+    prev_img_ptr = curr_img_ptr;
     prev_img_time = curr_img_time;
 
     return haveFeatures;
@@ -390,7 +441,11 @@ bool ImageProcessor::initializeFirstFrame() {
 
 bool ImageProcessor::trackFirstFeatures(
         const std::vector<ImuData>& imu_msg_buffer) {
-    //TODO: IMU pre-integration
+    // Integrate gyro data to get a guess of rotation between current and previous image
+//    integrateImuData(R_Prev2Curr, imu_msg_buffer);
+
+    // Pre-integrate first tracked points
+//    tracker_gpu->imu_preintegration(R_Prev2Curr, cam_intrinsics);
 
     // IDs of active features tracked
     std::vector<FeatureIDType> active_ids;
@@ -512,7 +567,8 @@ void ImageProcessor::trackFeatures() {
         return;
     }
 
-    //TODO: IMU pre-integration
+    // Apply rotation to tracked points
+//    tracker_gpu->imu_preintegration(R_Prev2Curr, cam_intrinsics);
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
@@ -530,7 +586,7 @@ void ImageProcessor::trackFeatures() {
     trackImage(img, current_tracked_points_map);
 
     // Remove dead features
-    clearDeadFeatures();
+//    clearDeadFeatures();
 
     // Previous and current points which have been
     // tracked through two consecutive images
