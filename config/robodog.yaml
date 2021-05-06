@@ -95,8 +95,8 @@ img_rate: 60
 
 # augmented feature state settings
 max_features_in_one_grid: 1     # pure msckf if set to 0
-aug_grid_rows: 4
-aug_grid_cols: 5
+aug_grid_rows: 5
+aug_grid_cols: 6
 feature_idp_dim: 1              # 1 or 3
 
 # if apply Schmidt filter
