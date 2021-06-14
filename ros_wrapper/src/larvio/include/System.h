@@ -53,6 +53,9 @@ public:
 
 private:
 
+    // Publish flag
+    const bool publish;
+
     // Ros node handle.
     ros::NodeHandle nh;
 
