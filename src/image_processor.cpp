@@ -68,64 +68,57 @@ ImageProcessor::~ImageProcessor() {
 
 bool ImageProcessor::loadParameters() {
 
-    cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
-    if (!fsSettings.isOpened()) {
-        cout << "config_file error: cannot open " << config_file << endl;
-        return false;
-    }
+    // Load config YAML file
+    YAML::Node config = YAML::LoadFile(config_file);
 
     // Read config parameters
-    processor_config.max_distance = fsSettings["max_distance"];
-    processor_config.pub_frequency = fsSettings["pub_frequency"];
-    processor_config.fast_threshold = fsSettings["fast_threshold"];
-    processor_config.pyramid_levels = fsSettings["pyramid_levels"];
-    processor_config.max_features_num = fsSettings["max_features_num"];
-    processor_config.flag_equalize = static_cast<int>(fsSettings["flag_equalize"]) != 0;
-    processor_config.publish_features = static_cast<int>(fsSettings["publish_features"]) != 0;
+    processor_config.max_distance = config["max_distance"].as<float>();
+    processor_config.pub_frequency = config["pub_frequency"].as<float>();
+    processor_config.fast_threshold = config["fast_threshold"].as<float>();
+    processor_config.pyramid_levels = config["pyramid_levels"].as<int>();
+    processor_config.max_features_num = config["max_features_num"].as<int>();
+    processor_config.flag_equalize = fsSettings["flag_equalize"].as<bool>();
+    processor_config.publish_features = fsSettings["publish_features"]).as<bool>();
 
     // Output files directory
-    fsSettings["output_dir"] >> output_dir;
+    output_dir = config["output_dir"].as<string>();
 
     /*
      * Camera calibration parameters
      */
 
     // Camera model
-    fsSettings["camera_model"] >> camera_model;
+    camera_model = config["camera_model"].as<string>();
 
     // Distortion model
-    fsSettings["distortion_model"] >> cam_distortion_model;
+    cam_distortion_model = config["distortion_model"].as<string>();
 
     // Resolution of camera
-    cam_resolution[0] = fsSettings["resolution_width"];
-    cam_resolution[1] = fsSettings["resolution_height"];
+    cam_resolution[0] = config["resolution_width"].as<float>();
+    cam_resolution[1] = config["resolution_height"].as<float>();
 
     // Camera calibration instrinsics
-    cv::FileNode n_instrin = fsSettings["intrinsics"];
-    cam_intrinsics[0] = static_cast<double>(n_instrin["fx"]);
-    cam_intrinsics[1] = static_cast<double>(n_instrin["fy"]);
-    cam_intrinsics[2] = static_cast<double>(n_instrin["cx"]);
-    cam_intrinsics[3] = static_cast<double>(n_instrin["cy"]);
-
-    // Distortion coefficient
-    cv::FileNode n_distort = fsSettings["distortion_coeffs"];
+    cam_intrinsics[0] = config["intrinsics"]["fx"].as<float>();
+    cam_intrinsics[1] = config["intrinsics"]["fy"].as<float>();
+    cam_intrinsics[2] = config["intrinsics"]["cx"].as<float>();
+    cam_intrinsics[3] = config["intrinsics"]["cy"].as<float>();
 
     // Distortion coefficient (pinhole)
-    cam_distortion_coeffs[0] = static_cast<double>(n_distort["k1"]);
-    cam_distortion_coeffs[1] = static_cast<double>(n_distort["k2"]);
-    cam_distortion_coeffs[2] = static_cast<double>(n_distort["p1"]);
-    cam_distortion_coeffs[3] = static_cast<double>(n_distort["p2"]);
+    cam_distortion_coeffs[0] = config["distortion_coeffs"]["k1"].as<float>();
+    cam_distortion_coeffs[1] = config["distortion_coeffs"]["k2"].as<float>();
+    cam_distortion_coeffs[2] = config["distortion_coeffs"]["p1"].as<float>();
+    cam_distortion_coeffs[3] = config["distortion_coeffs"]["p2"].as<float>();
 
     // Distortion coefficient (plumb bob)
-    plumb_bob_distortion_coeffs[0] = static_cast<double>(n_distort["k1"]);
-    plumb_bob_distortion_coeffs[1] = static_cast<double>(n_distort["k2"]);
-    plumb_bob_distortion_coeffs[2] = static_cast<double>(n_distort["p1"]);
-    plumb_bob_distortion_coeffs[3] = static_cast<double>(n_distort["p2"]);
-    plumb_bob_distortion_coeffs[4] = static_cast<double>(n_distort["k3"]);
+    plumb_bob_distortion_coeffs[0] = config["distortion_coeffs"]["k1"].as<float>();
+    plumb_bob_distortion_coeffs[1] = config["distortion_coeffs"]["k2"].as<float>();
+    plumb_bob_distortion_coeffs[2] = config["distortion_coeffs"]["p1"].as<float>();
+    plumb_bob_distortion_coeffs[3] = config["distortion_coeffs"]["p2"].as<float>();
+    plumb_bob_distortion_coeffs[4] = config["distortion_coeffs"]["k3"].as<float>();
 
     // Extrinsic between camera and IMU
     cv::Mat T_imu_cam;
-    fsSettings["T_cam_imu"] >> T_imu_cam;
+    config["T_cam_imu"] >> T_imu_cam;
     cv::Matx33d R_imu_cam(T_imu_cam(cv::Rect(0,0,3,3)));      
     cv::Vec3d t_imu_cam = T_imu_cam(cv::Rect(3,0,1,3));
     R_cam_imu = R_imu_cam.t();
