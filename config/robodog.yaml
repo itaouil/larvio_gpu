@@ -27,7 +27,7 @@ distortion_coeffs:
    k3: -0.020160820335149765
 
 # imu-camera extrinsic, including spacial and temporal parameters
-T_cam_imu: !!opencv-matrix
+T_cam_imu:
    rows: 4
    cols: 4
    dt: d
