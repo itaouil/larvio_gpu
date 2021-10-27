@@ -73,14 +73,20 @@ bool ImageProcessor::loadParameters() {
         // Load config YAML file
         YAML::Node config = YAML::LoadFile(config_file);
 
+        cout << "1" << endl;
+
         // Read config parameters
         processor_config.pub_frequency = config["pub_frequency"].as<float>();
         processor_config.max_features_num = config["max_features_num"].as<int>();
         processor_config.flag_equalize = config["flag_equalize"].as<bool>();
         processor_config.publish_features = config["publish_features"].as<bool>();
 
+        cout << "2" << endl;
+
         // Output files directory
         output_dir = config["output_dir"].as<string>();
+
+        cout << "2" << endl;
 
         /*
         * Camera calibration parameters
@@ -88,33 +94,33 @@ bool ImageProcessor::loadParameters() {
 
         // Camera model
         camera_model = config["camera_model"].as<string>();
-
+        cout << "2" << endl;
         // Distortion model
         cam_distortion_model = config["distortion_model"].as<string>();
-
+        cout << "2" << endl;
         // Resolution of camera
         cam_resolution[0] = config["resolution_width"].as<float>();
         cam_resolution[1] = config["resolution_height"].as<float>();
-
+        cout << "2" << endl;
         // Camera calibration instrinsics
         cam_intrinsics[0] = config["intrinsics"]["fx"].as<float>();
         cam_intrinsics[1] = config["intrinsics"]["fy"].as<float>();
         cam_intrinsics[2] = config["intrinsics"]["cx"].as<float>();
         cam_intrinsics[3] = config["intrinsics"]["cy"].as<float>();
-
+        cout << "2" << endl;
         // Distortion coefficient (pinhole)
         cam_distortion_coeffs[0] = config["distortion_coeffs"]["k1"].as<float>();
         cam_distortion_coeffs[1] = config["distortion_coeffs"]["k2"].as<float>();
         cam_distortion_coeffs[2] = config["distortion_coeffs"]["p1"].as<float>();
         cam_distortion_coeffs[3] = config["distortion_coeffs"]["p2"].as<float>();
-
+        cout << "2" << endl;
         // Distortion coefficient (plumb bob)
         plumb_bob_distortion_coeffs[0] = config["distortion_coeffs"]["k1"].as<float>();
         plumb_bob_distortion_coeffs[1] = config["distortion_coeffs"]["k2"].as<float>();
         plumb_bob_distortion_coeffs[2] = config["distortion_coeffs"]["p1"].as<float>();
         plumb_bob_distortion_coeffs[3] = config["distortion_coeffs"]["p2"].as<float>();
         plumb_bob_distortion_coeffs[4] = config["distortion_coeffs"]["k3"].as<float>();
-
+        cout << "2" << endl;
         // Extrinsic between camera and IMU        
         cv::Mat T_imu_cam = cv::Mat(config["T_cam_imu"]["data"].as<vector<float>>());
         T_imu_cam.reshape(config["T_cam_imu"]["rows"].as<int>(), config["T_cam_imu"]["cols"].as<int>());
@@ -122,7 +128,7 @@ bool ImageProcessor::loadParameters() {
         cv::Vec3d t_imu_cam = T_imu_cam(cv::Rect(3,0,1,3));
         R_cam_imu = R_imu_cam.t();
         t_cam_imu = -R_imu_cam.t() * t_imu_cam;
-
+        cout << "2" << endl;
         return true;
     } catch(YAML::ParserException& e) {
         cout << "Exception happened while rading yaml file: " << e.what() << endl;
