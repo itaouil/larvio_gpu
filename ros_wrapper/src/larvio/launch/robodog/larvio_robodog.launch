@@ -1,20 +1,7 @@
 <launch>
-
-  <!-- Depth Image Processor -->
-  <node pkg="nodelet" type="nodelet" name="nodelet_manager" args="manager" />
-  <node pkg="nodelet" type="nodelet" name="nodelet1" args="load depth_image_proc/point_cloud_xyz nodelet_manager" output="screen">
-    <remap from="camera_info" to="/d455/depth/camera_info"/>
-    <remap from="image_rect" to="/d455/depth/image_rect_raw"/>
-    <remap from="points" to="/camera/depth/points"/>
-  </node>
-
-  <!-- Uncompress Raw Images -->
-  <node name="republish" type="republish" pkg="image_transport" output="screen" args="compressed in:=/d455/color/image_raw raw out:=/cam0/image_raw" />
-
   <!-- VIO Node  -->
   <arg name="robot" default="qxc_robot"/>
   <arg name="fixed_frame_id" default="d455_link"/>
-<!--   <arg name="fixed_frame_id" default="world"/> -->
 
   <group ns="$(arg robot)">
     <node pkg="nodelet" type="nodelet" name="system" args='standalone larvio/SystemNodelet' output="log">
@@ -29,8 +16,4 @@
 
     </node>
   </group>
-
-  <!-- Launch Rosbag file -->
-  <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/itaouil/datasets/VIO/Robodog/front_horizontal/front_horizontal.bag /d455/imu:=/imu0"/>
-
 </launch>
