@@ -39,10 +39,10 @@ add_library(image_processor
     ${PROJECT_SOURCE_DIR}/src/ORBDescriptor.cpp
 )
 target_link_libraries(image_processor
+    yaml-cpp
     libvilib.so
     ${CUDA_LIBRARIES}
     ${OpenCV_LIBRARIES}
-    yaml-cpp
 )
 
 # Initializer

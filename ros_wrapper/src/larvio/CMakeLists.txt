@@ -33,6 +33,7 @@ find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(SuiteSparse REQUIRED)
 
 ###################################
@@ -76,6 +77,7 @@ add_library(image_processor
     ${LARVIO_SRC}/image_processor.cpp
 )
 target_link_libraries(image_processor
+    yaml-cpp
     libvilib.so
     ${CUDA_LIBRARIES}
     ${OpenCV_LIBRARIES}
