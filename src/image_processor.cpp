@@ -76,10 +76,10 @@ bool ImageProcessor::loadParameters() {
         cout << "1" << endl;
 
         // Read config parameters
-        processor_config.pub_frequency = config["pub_frequency"].as<float>();
+        processor_config.pub_frequency = config["pub_frequency"].as<int>();
         processor_config.max_features_num = config["max_features_num"].as<int>();
-        processor_config.flag_equalize = config["flag_equalize"].as<bool>();
-        processor_config.publish_features = config["publish_features"].as<bool>();
+        processor_config.flag_equalize = static_cast<bool>(config["flag_equalize"].as<int>());
+        processor_config.publish_features = static_cast<bool>(config["publish_features"].as<int>());
 
         cout << "2" << endl;
 
