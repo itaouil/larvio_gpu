@@ -14,6 +14,7 @@ find_package(Ceres REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Pangolin REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(SuiteSparse REQUIRED)
 
 include_directories(
@@ -41,6 +42,7 @@ target_link_libraries(image_processor
     libvilib.so
     ${CUDA_LIBRARIES}
     ${OpenCV_LIBRARIES}
+    yaml-cpp
 )
 
 # Initializer
