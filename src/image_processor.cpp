@@ -117,7 +117,7 @@ bool ImageProcessor::loadParameters() {
 
         // Extrinsic between camera and IMU        
         cv::Mat T_imu_cam = cv::Mat(config["T_cam_imu"]["data"].as<vector<float>>());
-        T_imu_cam.reshape(config["T_cam_imu"]["rows"], config["T_cam_imu"]["cols"]);
+        T_imu_cam.reshape(config["T_cam_imu"]["rows"].as<int>(), config["T_cam_imu"]["cols"].as<int>());
         cv::Matx33d R_imu_cam(T_imu_cam(cv::Rect(0,0,3,3)));      
         cv::Vec3d t_imu_cam = T_imu_cam(cv::Rect(3,0,1,3));
         R_cam_imu = R_imu_cam.t();
