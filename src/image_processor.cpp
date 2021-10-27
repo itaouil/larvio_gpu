@@ -76,8 +76,8 @@ bool ImageProcessor::loadParameters() {
         // Read config parameters
         processor_config.pub_frequency = config["pub_frequency"].as<float>();
         processor_config.max_features_num = config["max_features_num"].as<int>();
-        processor_config.flag_equalize = fsSettings["flag_equalize"].as<bool>();
-        processor_config.publish_features = fsSettings["publish_features"]).as<bool>();
+        processor_config.flag_equalize = config["flag_equalize"].as<bool>();
+        processor_config.publish_features = config["publish_features"]).as<bool>();
 
         // Output files directory
         output_dir = config["output_dir"].as<string>();
@@ -115,11 +115,9 @@ bool ImageProcessor::loadParameters() {
         plumb_bob_distortion_coeffs[3] = config["distortion_coeffs"]["p2"].as<float>();
         plumb_bob_distortion_coeffs[4] = config["distortion_coeffs"]["k3"].as<float>();
 
-        // Extrinsic between camera and IMU
-        cv::Mat T_imu_cam = cv::Mat(config["T_cam_imu"]["rows"],
-                                    config["T_cam_imu"]["cols"], 
-                                    CV_32F,
-                                    config["T_cam_imu"]["data"].as<vector<float>>());
+        // Extrinsic between camera and IMU        
+        cv::Mat T_imu_cam = cv::Mat(config["T_cam_imu"]["data"].as<vector<float>>());
+        T_imu_cam.reshape(config["T_cam_imu"]["rows"], config["T_cam_imu"]["cols"],)
         cv::Matx33d R_imu_cam(T_imu_cam(cv::Rect(0,0,3,3)));      
         cv::Vec3d t_imu_cam = T_imu_cam(cv::Rect(3,0,1,3));
         R_cam_imu = R_imu_cam.t();
