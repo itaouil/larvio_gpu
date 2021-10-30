@@ -118,6 +118,7 @@ bool System::initialize() {
 
 // Push imu msg into the buffer.
 void System::imuCallback(const sensor_msgs::ImuConstPtr& msg) {
+    ROS_INFO_STREAM("Inside IMU callback.");
     imu_msg_buffer.push_back(ImuData(msg->header.stamp.toSec(),
             msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z,
             msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z));
@@ -126,6 +127,8 @@ void System::imuCallback(const sensor_msgs::ImuConstPtr& msg) {
 
 // Process the image and trigger the estimator.
 void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
+    ROS_INFO_STREAM("Inside image callback.");
+
     // Do nothing if no imu msg is received.
     if (imu_msg_buffer.empty())
         return;
