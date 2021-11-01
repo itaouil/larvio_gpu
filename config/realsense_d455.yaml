@@ -15,16 +15,16 @@ distortion_model: ""    # only support "radtan" and "equidistant" for pinhole
 resolution_width: 848
 resolution_height: 480
 intrinsics:
-   fx: 423.46014404296875
-   fy: 420.8778076171875
-   cx: 422.3664245605469
-   cy: 242.57615661621094
+   fx: 421.40130615234375
+   fy: 423.194580078125
+   cx: 420.9709777832031
+   cy: 239.39639282226562
 distortion_coeffs:
-   k1: -0.05572371557354927
-   k2: 0.06307043880224228
-   p1: -0.0012400213163346052
-   p2: -0.0008199785370379686
-   k3: -0.020160820335149765
+   k1: -0.060368333011865616
+   k2: 0.07064265012741089
+   p1: -0.0002652506809681654
+   p2: 0.0004345417255535722
+   k3: -0.022284265607595444
 
 # imu-camera extrinsic, including spacial and temporal parameters
 T_cam_imu: !!opencv-matrix
