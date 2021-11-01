@@ -56,8 +56,8 @@ bool System::createRosIO() {
     img_sub = nh.subscribe("cam0_image", 50, &System::imageCallback, this);
 
     // Advertise processed image msg.
-    // image_transport::ImageTransport it(nh);
-    // vis_img_pub = it.advertise("visualization_image", 1);
+     image_transport::ImageTransport it(nh);
+     vis_img_pub = it.advertise("visualization_image", 1);
 
     // Advertise odometry msg.
     odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 10);
@@ -66,10 +66,10 @@ bool System::createRosIO() {
     pose_pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose", 10);
 
     // Advertise point cloud msg.
-    // stable_feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
-            // "stable_feature_point_cloud", 1);
-    // active_feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
-            // "active_feature_point_cloud", 1);
+     stable_feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
+             "stable_feature_point_cloud", 1);
+     active_feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
+             "active_feature_point_cloud", 1);
 
     // Advertise path msg.
     path_pub = nh.advertise<nav_msgs::Path>("path", 10);
@@ -77,10 +77,10 @@ bool System::createRosIO() {
     nh.param<string>("fixed_frame_id", fixed_frame_id, "world");
     nh.param<string>("child_frame_id", child_frame_id, "robot");
 
-    // stable_feature_msg_ptr.reset(
-        // new pcl::PointCloud<pcl::PointXYZ>());
-    // stable_feature_msg_ptr->header.frame_id = fixed_frame_id;
-    // stable_feature_msg_ptr->height = 1;
+     stable_feature_msg_ptr.reset(
+         new pcl::PointCloud<pcl::PointXYZ>());
+     stable_feature_msg_ptr->header.frame_id = fixed_frame_id;
+     stable_feature_msg_ptr->height = 1;
 
     return true;
 }
@@ -118,7 +118,6 @@ bool System::initialize() {
 
 // Push imu msg into the buffer.
 void System::imuCallback(const sensor_msgs::ImuConstPtr& msg) {
-    ROS_INFO_STREAM("Inside IMU callback.");
     imu_msg_buffer.push_back(ImuData(msg->header.stamp.toSec(),
             msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z,
             msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z));
@@ -127,7 +126,6 @@ void System::imuCallback(const sensor_msgs::ImuConstPtr& msg) {
 
 // Process the image and trigger the estimator.
 void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
-    ROS_INFO_STREAM("Inside image callback.");
 
     // Do nothing if no imu msg is received.
     if (imu_msg_buffer.empty())
@@ -176,7 +174,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
         // Publish msgs if necessary
         if (bProcess) {
             cv_bridge::CvImage _image(header, "bgr8", ImgProcesser->getVisualImg());
-            // vis_img_pub.publish(_image.toImageMsg());
+             vis_img_pub.publish(_image.toImageMsg());
         }
         if (bPubOdo) {
             publishVIO(header.stamp);
@@ -215,7 +213,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
             // Publish msgs if necessary
             if (bProcess) {
                 cv_bridge::CvImage _image(header_buffer[i], "bgr8", ImgProcesser->getVisualImg());
-                // vis_img_pub.publish(_image.toImageMsg());
+                 vis_img_pub.publish(_image.toImageMsg());
             }
             if (bPubOdo) {
                 publishVIO(header_buffer[i].stamp);
@@ -245,7 +243,6 @@ void System::publishVIO(const ros::Time& time) {
     // Retrieve info
     Matrix3d P_body_vel = Estimator->getPvel();
     Eigen::Isometry3d T_b_w = Estimator->getTbw();
-//    Eigen::Isometry3d T_b_w_inv = T_b_w.inverse();
     Eigen::Vector3d body_velocity = Estimator->getVel();
     Matrix<double, 6, 6> P_body_pose = Estimator->getPpose();
 
@@ -268,47 +265,47 @@ void System::publishVIO(const ros::Time& time) {
             odom_msg.twist.covariance[i*6+j] = P_body_vel(i, j);
 
     // construct path msg
-    // path_msg.header.stamp = time;
-    // path_msg.header.frame_id = fixed_frame_id;
-    // geometry_msgs::PoseStamped curr_path;
-//    geometry_msgs::TransformStamped tf_path;
-    // curr_path.header.stamp = time;
-    // curr_path.header.frame_id = fixed_frame_id;
-    // tf::poseEigenToMsg(T_b_w, curr_path.pose);
-//    tf::poseEigenToMsg(T_b_w_inv, tf_path.transform);
-    // path_msg.poses.push_back(curr_path);
+     path_msg.header.stamp = time;
+     path_msg.header.frame_id = fixed_frame_id;
+     geometry_msgs::PoseStamped curr_path;
+    geometry_msgs::TransformStamped tf_path;
+     curr_path.header.stamp = time;
+     curr_path.header.frame_id = fixed_frame_id;
+     tf::poseEigenToMsg(T_b_w, curr_path.pose);
+     path_msg.poses.push_back(curr_path);
 
     // construct point cloud msg
     // Publish the 3D positions of the features.
     // Including stable and active ones.
     // --Stable features
-    // std::map<larvio::FeatureIDType,Eigen::Vector3d> StableMapPoints;
-    // Estimator->getStableMapPointPositions(StableMapPoints);
-    // for (const auto& item : StableMapPoints) {
-    //     const auto& feature_position = item.second;
-    //     stable_feature_msg_ptr->points.push_back(pcl::PointXYZ(
-    //             feature_position(0), feature_position(1), feature_position(2)));
-    // }
-    // stable_feature_msg_ptr->width = stable_feature_msg_ptr->points.size();
+     std::map<larvio::FeatureIDType,Eigen::Vector3d> StableMapPoints;
+     Estimator->getStableMapPointPositions(StableMapPoints);
+     for (const auto& item : StableMapPoints) {
+         const auto& feature_position = item.second;
+         stable_feature_msg_ptr->points.push_back(pcl::PointXYZ(
+                 feature_position(0), feature_position(1), feature_position(2)));
+     }
+     stable_feature_msg_ptr->width = stable_feature_msg_ptr->points.size();
+
     // // --Active features
-    // active_feature_msg_ptr.reset(
-    //     new pcl::PointCloud<pcl::PointXYZ>());
-    // active_feature_msg_ptr->header.frame_id = fixed_frame_id;
-    // active_feature_msg_ptr->height = 1;
-    // std::map<larvio::FeatureIDType,Eigen::Vector3d> ActiveMapPoints;
-    // Estimator->getActiveeMapPointPositions(ActiveMapPoints);
-    // for (const auto& item : ActiveMapPoints) {
-    //     const auto& feature_position = item.second;
-    //     active_feature_msg_ptr->points.push_back(pcl::PointXYZ(
-    //             feature_position(0), feature_position(1), feature_position(2)));
-    // }
-    // active_feature_msg_ptr->width = active_feature_msg_ptr->points.size();
+     active_feature_msg_ptr.reset(
+         new pcl::PointCloud<pcl::PointXYZ>());
+     active_feature_msg_ptr->header.frame_id = fixed_frame_id;
+     active_feature_msg_ptr->height = 1;
+     std::map<larvio::FeatureIDType,Eigen::Vector3d> ActiveMapPoints;
+     Estimator->getActiveeMapPointPositions(ActiveMapPoints);
+     for (const auto& item : ActiveMapPoints) {
+         const auto& feature_position = item.second;
+         active_feature_msg_ptr->points.push_back(pcl::PointXYZ(
+                 feature_position(0), feature_position(1), feature_position(2)));
+     }
+     active_feature_msg_ptr->width = active_feature_msg_ptr->points.size();
 
     odom_pub.publish(odom_msg);
     pose_pub.publish(pose_msg);
-    // path_pub.publish(path_msg);
-    // stable_feature_pub.publish(stable_feature_msg_ptr);
-    // active_feature_pub.publish(active_feature_msg_ptr);
+     path_pub.publish(path_msg);
+     stable_feature_pub.publish(stable_feature_msg_ptr);
+     active_feature_pub.publish(active_feature_msg_ptr);
 }
 
 } // end namespace larvio
