@@ -68,23 +68,37 @@ bool ImageProcessor::loadParameters() {
     /*
      * Camera calibration parameters
      */
+    // Camera model
+    fsSettings["camera_model"] >> camera_model;
+
     // Distortion model
     fsSettings["distortion_model"] >> cam_distortion_model;
+
     // Resolution of camera
     cam_resolution[0] = fsSettings["resolution_width"];
     cam_resolution[1] = fsSettings["resolution_height"];
+
     // Camera calibration instrinsics
     cv::FileNode n_instrin = fsSettings["intrinsics"];
     cam_intrinsics[0] = static_cast<double>(n_instrin["fx"]);
     cam_intrinsics[1] = static_cast<double>(n_instrin["fy"]);
     cam_intrinsics[2] = static_cast<double>(n_instrin["cx"]);
     cam_intrinsics[3] = static_cast<double>(n_instrin["cy"]);
+
     // Distortion coefficient
     cv::FileNode n_distort = fsSettings["distortion_coeffs"];
     cam_distortion_coeffs[0] = static_cast<double>(n_distort["k1"]);
     cam_distortion_coeffs[1] = static_cast<double>(n_distort["k2"]);
     cam_distortion_coeffs[2] = static_cast<double>(n_distort["p1"]);
     cam_distortion_coeffs[3] = static_cast<double>(n_distort["p2"]);
+
+    // Distortion coefficient (plumb bob)
+    plumb_bob_distortion_coeffs[0] = static_cast<double>(n_distort["k1"]);
+    plumb_bob_distortion_coeffs[1] = static_cast<double>(n_distort["k2"]);
+    plumb_bob_distortion_coeffs[2] = static_cast<double>(n_distort["p1"]);
+    plumb_bob_distortion_coeffs[3] = static_cast<double>(n_distort["p2"]);
+    plumb_bob_distortion_coeffs[4] = static_cast<double>(n_distort["k3"]);
+
     // Extrinsics between camera and IMU
     cv::Mat T_imu_cam;
     fsSettings["T_cam_imu"] >> T_imu_cam;
@@ -1038,14 +1052,14 @@ void ImageProcessor::findNewFeaturesToBeTracked() {
 
 
 void ImageProcessor::undistortPoints(
-    const vector<cv::Point2f>& pts_in,
-    const cv::Vec4d& intrinsics,
-    const string& distortion_model,
-    const cv::Vec4d& distortion_coeffs,
-    vector<cv::Point2f>& pts_out,
-    const cv::Matx33d &rectification_matrix,
-    const cv::Vec4d &new_intrinsics) {
-    if (pts_in.size() == 0) return;
+        const vector<cv::Point2f>& pts_in,
+        const cv::Vec4d& intrinsics,
+        const string& distortion_model,
+        const cv::Vec4d& distortion_coeffs,
+        vector<cv::Point2f>& pts_out,
+        const cv::Matx33d &rectification_matrix,
+        const cv::Vec4d &new_intrinsics) {
+    if (pts_in.empty()) return;
 
     const cv::Matx33d K(
             intrinsics[0], 0.0, intrinsics[2],
@@ -1057,22 +1071,34 @@ void ImageProcessor::undistortPoints(
             0.0, new_intrinsics[1], new_intrinsics[3],
             0.0, 0.0, 1.0);
 
-    if (distortion_model == "radtan") {
-        cv::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
-                            rectification_matrix, K_new);       
-    } else if (distortion_model == "equidistant") {
-        cv::fisheye::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
-                                     rectification_matrix, K_new);
-    } else {
-        printf("The model %s is unrecognized, use radtan instead...",
-                      distortion_model.c_str());
+    if (camera_model == "plumb_bob") {
+        cv::undistortPoints(pts_in, pts_out, K, plumb_bob_distortion_coeffs,
+                            rectification_matrix, K_new);
+    }
+    else if (camera_model == "pinhole") {
+        if (distortion_model == "radtan") {
+            cv::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
+                                rectification_matrix, K_new);
+        } else if (distortion_model == "equidistant") {
+            cv::fisheye::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
+                                         rectification_matrix, K_new);
+        } else {
+            printf("The distortion model %s is unrecognized, use pinhole radtan instead...\n",
+                   distortion_model.c_str());
+            cv::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
+                                rectification_matrix, K_new);
+        }
+    }
+    else {
+        printf("The camera model %s is unrecognized, use pinhole radtan instead...\n",
+               distortion_model.c_str());
         cv::undistortPoints(pts_in, pts_out, K, distortion_coeffs,
                             rectification_matrix, K_new);
     }
 }
 
 
-// Get processed feature msg.
+    // Get processed feature msg.
 void ImageProcessor::getFeatureMsg(MonoCameraMeasurementPtr feature_msg_ptr) {
     feature_msg_ptr->timeStampToSec = curr_img_ptr->timeStampToSec;
 
