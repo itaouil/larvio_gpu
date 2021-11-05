@@ -183,11 +183,11 @@ void ImageProcessor::applyClahe() {
 
 bool ImageProcessor::initializeVilib() {
     FeatureTrackerOptions l_feature_tracker_options;
-    l_feature_tracker_options.affine_est_gain = false;
-    l_feature_tracker_options.affine_est_offset = false;
+    l_feature_tracker_options.affine_est_gain = true;
+    l_feature_tracker_options.affine_est_offset = true;
     l_feature_tracker_options.reset_before_detection = false;
     l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
-    l_feature_tracker_options.min_tracks_to_detect_new_features =  0.5 * l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features =  0.7 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -442,10 +442,10 @@ bool ImageProcessor::initializeFirstFrame() {
 bool ImageProcessor::trackFirstFeatures(
         const std::vector<ImuData>& imu_msg_buffer) {
     // Integrate gyro data to get a guess of rotation between current and previous image
-//    integrateImuData(R_Prev2Curr, imu_msg_buffer);
+    integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
     // Pre-integrate first tracked points
-//    tracker_gpu->imu_preintegration(R_Prev2Curr, cam_intrinsics);
+    tracker_gpu->imu_preintegration(R_Prev2Curr, cam_intrinsics);
 
     // IDs of active features tracked
     std::vector<FeatureIDType> active_ids;

@@ -6,25 +6,59 @@ output_dir: "/home/itaouil/datasets/VIO/Robodog/"
 # switches
 if_FEJ: 1    # 0(false) or 1(true)
 estimate_td: 1    # 0(false) or 1(true)
-estimate_extrin: 1   # 0(false) or 1(true)
-calib_imu_instrinsic: 1    # 0(false) or 1(true)
+estimate_extrin: 0   # 0(false) or 1(true)
+calib_imu_instrinsic: 0    # 0(false) or 1(true)
 
-# camera instrinsic
+# camera instrinsic (1280x800)
 camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
 distortion_model: ""    # only support "radtan" and "equidistant" for pinhole
-resolution_width: 848
-resolution_height: 480
+resolution_width: 1280
+resolution_height: 800
 intrinsics:
-   fx: 421.40130615234375
-   fy: 423.194580078125
-   cx: 420.9709777832031
-   cy: 239.39639282226562
+   fx: 633.488891601562
+   fy: 632.841979980469
+   cx: 638.784301757812
+   cy: 399.088897705078
 distortion_coeffs:
-   k1: -0.060368333011865616
-   k2: 0.07064265012741089
-   p1: -0.0002652506809681654
-   p2: 0.0004345417255535722
-   k3: -0.022284265607595444
+   k1: -0.0603683330118656
+   k2: 0.0706426501274109
+   p1: -0.000265250680968165
+   p2: 0.000434541725553572
+   k3: -0.0222842656075954
+
+# camera instrinsic (848x480)
+#camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
+#distortion_model: ""    # only support "radtan" and "equidistant" for pinhole
+#resolution_width: 848
+#resolution_height: 480
+#intrinsics:
+#   fx: 419.686370849609
+#   fy: 419.2578125
+#   cx: 423.194580078125
+#   cy: 239.396392822266
+#distortion_coeffs:
+#   k1: -0.0603683330118656
+#   k2: 0.0706426501274109
+#   p1: -0.000265250680968165
+#   p2: 0.000434541725553572
+#   k3: -0.0222842656075954
+
+## camera instrinsic (640x360)
+#camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
+#distortion_model: ""    # only support "radtan" and "equidistant" for pinhole
+#resolution_width: 640
+#resolution_height: 360
+#intrinsics:
+#   fx: 316.744445800781
+#   fy: 316.420989990234
+#   cx: 319.392150878906
+#   cy: 179.544448852539
+#distortion_coeffs:
+#   k1: -0.0603683330118656
+#   k2: 0.0706426501274109
+#   p1: -0.000265250680968165
+#   p2: 0.000434541725553572
+#   k3: -0.0222842656075954
 
 # imu-camera extrinsic, including spacial and temporal parameters
 T_cam_imu: !!opencv-matrix
@@ -32,16 +66,14 @@ T_cam_imu: !!opencv-matrix
    cols: 4
    dt: d
    data:
-     [0.9999960,  0.0019960, -0.0020040, 0.029,
-      -0.0020040,  0.9999900, -0.0039980, 0.007,
-      0.0019960,  0.0040020,  0.9999900, 0.016,
+     [0.999998,  -0.000865696, 0.00202438, -0.028900409117341,
+      0.000866464,  1, -0.00037846, -0.00739984633401036,
+      -0.00202405,  0.000380213,  0.999998, -0.0154678728431463,
       0.0, 0.0, 0.0, 1.0]
 td: 0.0
 
-# TODO: if calibrate camera instrinsic online
-
 # visual front-end parameters
-flag_equalize: 0
+flag_equalize: 1
 pub_frequency: 35
 publish_features: 1
 max_features_num: 200
@@ -67,7 +99,7 @@ noise_acc_bias: 4e-5
 noise_feature: 0.008
 noise_gyro_bias: 2e-6
 
-# filter intial covariance
+# filter initial covariance
 initial_covariance_velocity: 0.25
 initial_covariance_position: 1.0
 initial_covariance_acc_bias: 0.01
