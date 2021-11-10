@@ -261,10 +261,9 @@ void ImageProcessor::trackImage(
     {
         //printf("Track ID: %d\n", l_frame->track_id_vec_[i]);
         points[l_frame->track_id_vec_[i]] = cv::Point2f(l_frame->px_vec_.col(i)[0], l_frame->px_vec_.col(i)[1]);
-
-        std::cout << "ID: " << l_frame->track_id_vec_[i] << std::endl;
-        std::cout << "X: " << l_frame->px_vec_.col(i)[0] << std::endl;
-        std::cout << "Y: " << l_frame->px_vec_.col(i)[1] << std::endl;
+//        std::cout << "ID: " << l_frame->track_id_vec_[i] << std::endl;
+//        std::cout << "X: " << l_frame->px_vec_.col(i)[0] << std::endl;
+//        std::cout << "Y: " << l_frame->px_vec_.col(i)[1] << std::endl;
 //        std::cout << "X-float " << l_frame->px_vec_.col(i)[0] << std::endl;
 //        std::cout << "Y-float " << l_frame->px_vec_.col(i)[1] << std::endl;
     }
