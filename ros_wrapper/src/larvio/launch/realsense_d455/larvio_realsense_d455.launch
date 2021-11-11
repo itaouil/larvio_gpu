@@ -1,8 +1,14 @@
 <launch>
-
+     <!-- Depth Image Processor -->
+    <node pkg="nodelet" type="nodelet" name="nodelet_manager" args="manager" />
+    <node pkg="nodelet" type="nodelet" name="nodelet1" args="load depth_image_proc/point_cloud_xyz nodelet_manager" output="screen">
+        <remap from="camera_info" to="/d455/depth/camera_info"/>
+        <remap from="image_rect" to="/d455/depth/image_rect_raw"/>
+        <remap from="points" to="/camera/depth/points"/>
+    </node>
+    
     <arg name="robot" default="qxc_robot"/>
-    <arg name="fixed_frame_id" default="d455_link"/>
-
+    <arg name="fixed_frame_id" default="world"/>
 
     <!-- System Manager Nodelet  -->
     <group ns="$(arg robot)">

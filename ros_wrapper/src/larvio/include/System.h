@@ -27,6 +27,7 @@
 #include <nav_msgs/Path.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 namespace larvio {
 
@@ -60,17 +61,19 @@ private:
     ros::Subscriber imu_sub;
 
     // Publishers.
-    image_transport::Publisher vis_img_pub;
     ros::Publisher odom_pub;
+    ros::Publisher pose_pub;
+    ros::Publisher path_pub;
     ros::Publisher stable_feature_pub;
     ros::Publisher active_feature_pub;
-    ros::Publisher path_pub;
+    image_transport::Publisher vis_img_pub;
 
     // Msgs to be published.
     std::vector<std_msgs::Header> header_buffer;    // buffer for heads of msgs to be published
 
     // Msgs to be published.
     nav_msgs::Odometry odom_msg;
+    geometry_msgs::PoseWithCovarianceStamped pose_msg;
     pcl::PointCloud<pcl::PointXYZ>::Ptr stable_feature_msg_ptr;
     pcl::PointCloud<pcl::PointXYZ>::Ptr active_feature_msg_ptr;
     nav_msgs::Path path_msg;

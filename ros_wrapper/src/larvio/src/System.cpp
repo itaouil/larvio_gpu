@@ -62,6 +62,9 @@ bool System::createRosIO() {
     // Advertise odometry msg.
     odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 10);
 
+    // Advertise pose with covariance message
+    pose_pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose", 10);
+
     // Advertise point cloud msg.
     stable_feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
             "stable_feature_point_cloud", 1);
@@ -231,15 +234,27 @@ void System::publishVIO(const ros::Time& time) {
     odom_msg.header.stamp = time;
     odom_msg.header.frame_id = fixed_frame_id;
     odom_msg.child_frame_id = child_frame_id;
+
+    // Construct pose msg
+    pose_msg.header.stamp = time;
+    pose_msg.header.frame_id = fixed_frame_id;  
+
     Eigen::Isometry3d T_b_w = Estimator->getTbw();
     Eigen::Vector3d body_velocity = Estimator->getVel();
     Matrix<double, 6, 6> P_body_pose = Estimator->getPpose();
     Matrix3d P_body_vel = Estimator->getPvel();
     tf::poseEigenToMsg(T_b_w, odom_msg.pose.pose);
     tf::vectorEigenToMsg(body_velocity, odom_msg.twist.twist.linear);
+    
+    // Copy pose to pose message
+    tf::poseEigenToMsg(T_b_w, pose_msg.pose.pose);
+    
     for (int i = 0; i < 6; ++i)
         for (int j = 0; j < 6; ++j)
+        {
             odom_msg.pose.covariance[6*i+j] = P_body_pose(i, j);
+            pose_msg.pose.covariance[6*i+j] = P_body_pose(i, j);
+        }
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
             odom_msg.twist.covariance[i*6+j] = P_body_vel(i, j);
@@ -280,6 +295,7 @@ void System::publishVIO(const ros::Time& time) {
     active_feature_msg_ptr->width = active_feature_msg_ptr->points.size();
 
     odom_pub.publish(odom_msg);
+    pose_pub.publish(pose_msg);
     stable_feature_pub.publish(stable_feature_msg_ptr);
     active_feature_pub.publish(active_feature_msg_ptr);
     path_pub.publish(path_msg);
