@@ -93,13 +93,13 @@ bool System::initialize() {
         return false;
     ROS_INFO("System: Finish loading ROS parameters...");
 
-    // Set pointers of image processer and estimator.
+    // Set pointers of image processor and estimator.
     ImgProcesser.reset(new ImageProcessor(config_file));
     Estimator.reset(new LarVio(config_file));
 
-    // Initialize image processer and estimator.
+    // Initialize image processor and estimator.
     if (!ImgProcesser->initialize()) {
-        ROS_WARN("Image Processer initialization failed!");
+        ROS_WARN("Image processor initialization failed!");
         return false;
     }
     if (!Estimator->initialize()) {
@@ -174,7 +174,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
         // Publish msgs if necessary
         if (bProcess) {
             cv_bridge::CvImage _image(header, "bgr8", ImgProcesser->getVisualImg());
-             vis_img_pub.publish(_image.toImageMsg());
+            vis_img_pub.publish(_image.toImageMsg());
         }
         if (bPubOdo) {
             publishVIO(header.stamp);
@@ -213,7 +213,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
             // Publish msgs if necessary
             if (bProcess) {
                 cv_bridge::CvImage _image(header_buffer[i], "bgr8", ImgProcesser->getVisualImg());
-                 vis_img_pub.publish(_image.toImageMsg());
+                vis_img_pub.publish(_image.toImageMsg());
             }
             if (bPubOdo) {
                 publishVIO(header_buffer[i].stamp);
@@ -229,7 +229,7 @@ void System::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
 }
 
 
-// Publish informations of VIO, including odometry, path, points cloud and whatever needed.
+// Publish information of VIO, including odometry, path, points cloud and whatever needed.
 void System::publishVIO(const ros::Time& time) {
     // construct odometry msg
     odom_msg.header.stamp = time;
@@ -259,20 +259,19 @@ void System::publishVIO(const ros::Time& time) {
             odom_msg.pose.covariance[6*i+j] = P_body_pose(i, j);
             pose_msg.pose.covariance[6*i+j] = P_body_pose(i, j);
         }
-        
+
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
             odom_msg.twist.covariance[i*6+j] = P_body_vel(i, j);
 
     // construct path msg
-     path_msg.header.stamp = time;
-     path_msg.header.frame_id = fixed_frame_id;
-     geometry_msgs::PoseStamped curr_path;
-    geometry_msgs::TransformStamped tf_path;
-     curr_path.header.stamp = time;
-     curr_path.header.frame_id = fixed_frame_id;
-     tf::poseEigenToMsg(T_b_w, curr_path.pose);
-     path_msg.poses.push_back(curr_path);
+    path_msg.header.stamp = time;
+    path_msg.header.frame_id = fixed_frame_id;
+    geometry_msgs::PoseStamped curr_path;
+    curr_path.header.stamp = time;
+    curr_path.header.frame_id = fixed_frame_id;
+    tf::poseEigenToMsg(T_b_w, curr_path.pose);
+    path_msg.poses.push_back(curr_path);
 
     // construct point cloud msg
     // Publish the 3D positions of the features.
@@ -287,7 +286,7 @@ void System::publishVIO(const ros::Time& time) {
      }
      stable_feature_msg_ptr->width = stable_feature_msg_ptr->points.size();
 
-    // // --Active features
+    // --Active features
      active_feature_msg_ptr.reset(
          new pcl::PointCloud<pcl::PointXYZ>());
      active_feature_msg_ptr->header.frame_id = fixed_frame_id;
@@ -303,9 +302,9 @@ void System::publishVIO(const ros::Time& time) {
 
     odom_pub.publish(odom_msg);
     pose_pub.publish(pose_msg);
-     path_pub.publish(path_msg);
-     stable_feature_pub.publish(stable_feature_msg_ptr);
-     active_feature_pub.publish(active_feature_msg_ptr);
+    path_pub.publish(path_msg);
+    stable_feature_pub.publish(stable_feature_msg_ptr);
+    active_feature_pub.publish(active_feature_msg_ptr);
 }
 
 } // end namespace larvio

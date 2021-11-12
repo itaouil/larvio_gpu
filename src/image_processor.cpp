@@ -38,13 +38,13 @@
 #define FEATURE_DETECTOR_USED FEATURE_DETECTOR_HARRIS
 
 // FAST parameters
-#define FEATURE_DETECTOR_FAST_EPISLON 25.f
-#define FEATURE_DETECTOR_FAST_ARC_LENGTH 18
+#define FEATURE_DETECTOR_FAST_EPISLON 10.f
+#define FEATURE_DETECTOR_FAST_ARC_LENGTH 10
 #define FEATURE_DETECTOR_FAST_SCORE SUM_OF_ABS_DIFF_ON_ARC
 
 // Harris/Shi-Tomasi parameters
 #define FEATURE_DETECTOR_HARRIS_K 0.04f
-#define FEATURE_DETECTOR_HARRIS_QUALITY_LEVEL 0.01f
+#define FEATURE_DETECTOR_HARRIS_QUALITY_LEVEL 0.1f
 #define FEATURE_DETECTOR_HARRIS_BORDER_TYPE conv_filter_border_type::BORDER_SKIP
 
 using namespace cv;
@@ -183,11 +183,11 @@ void ImageProcessor::applyClahe() {
 
 bool ImageProcessor::initializeVilib() {
     FeatureTrackerOptions l_feature_tracker_options;
-    l_feature_tracker_options.affine_est_gain = true;
-    l_feature_tracker_options.affine_est_offset = true;
+    l_feature_tracker_options.affine_est_gain = false;
+    l_feature_tracker_options.affine_est_offset = false;
     l_feature_tracker_options.reset_before_detection = false;
     l_feature_tracker_options.use_best_n_features = processor_config.max_features_num;
-    l_feature_tracker_options.min_tracks_to_detect_new_features =  0.7 * l_feature_tracker_options.use_best_n_features;
+    l_feature_tracker_options.min_tracks_to_detect_new_features =  0.6 * l_feature_tracker_options.use_best_n_features;
 
     // Create feature detector for the GPU
     if (FEATURE_DETECTOR_USED == FEATURE_DETECTOR_FAST)
@@ -231,6 +231,24 @@ bool ImageProcessor::initializeVilib() {
                       IMAGE_PYRAMID_MEMORY_TYPE);
 }
 
+bool ImageProcessor::initializeFirstFrame() {
+    // Get current image
+    const Mat& img = curr_img_ptr->image;
+
+    // The tracking call for this first stage only
+    // consists of detecting new features from the
+    // very first image received
+    trackImage(img, current_tracked_points_map);
+
+    // Initialize last publish time
+    last_pub_time = curr_img_ptr->timeStampToSec;
+
+    if (current_tracked_points_map.size() > 20)
+        return true;
+    else
+        return false;
+}
+
 
 void ImageProcessor::trackImage(
         const cv::Mat &img,
@@ -259,13 +277,16 @@ void ImageProcessor::trackImage(
     // and the value the (x,y) coordinate point of the feature
     for (std::size_t i = 0; i < l_frame->num_features_; ++i)
     {
+        long l_i = static_cast<long>(i);
+
         //printf("Track ID: %d\n", l_frame->track_id_vec_[i]);
-        points[l_frame->track_id_vec_[i]] = cv::Point2f(l_frame->px_vec_.col(i)[0], l_frame->px_vec_.col(i)[1]);
-//        std::cout << "ID: " << l_frame->track_id_vec_[i] << std::endl;
-//        std::cout << "X: " << l_frame->px_vec_.col(i)[0] << std::endl;
-//        std::cout << "Y: " << l_frame->px_vec_.col(i)[1] << std::endl;
-//        std::cout << "X-float " << l_frame->px_vec_.col(i)[0] << std::endl;
-//        std::cout << "Y-float " << l_frame->px_vec_.col(i)[1] << std::endl;
+        points[l_frame->track_id_vec_[l_i]] = cv::Point2f(static_cast<float>(l_frame->px_vec_.col(l_i)[0]),
+                                                          static_cast<float>(l_frame->px_vec_.col(l_i)[1]));
+        std::cout << "ID: " << l_frame->track_id_vec_[l_i] << std::endl;
+        std::cout << "X: " << l_frame->px_vec_.col(l_i)[0] << std::endl;
+        std::cout << "Y: " << l_frame->px_vec_.col(l_i)[1] << std::endl;
+        std::cout << "X-float " << l_frame->px_vec_.col(l_i)[0] << std::endl;
+        std::cout << "Y-float " << l_frame->px_vec_.col(l_i)[1] << std::endl;
     }
 }
 
@@ -327,8 +348,7 @@ void ImageProcessor::integrateImuData(Matx33f& cam_R_p2c,
     Vec3f cam_mean_ang_vel = R_cam_imu.t() * mean_ang_vel;
 
     // Compute the relative rotation.
-    double dtime = curr_img_ptr->timeStampToSec-
-                   prev_img_ptr->timeStampToSec;
+    double dtime = curr_img_ptr->timeStampToSec- prev_img_ptr->timeStampToSec;
     Rodrigues(cam_mean_ang_vel*dtime, cam_R_p2c);
     cam_R_p2c = cam_R_p2c.t();
 }
@@ -341,7 +361,7 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
     // images are not utilized until receiving imu msgs ahead
     if (!bFirstImg) {
         if ((imu_msg_buffer.begin() != imu_msg_buffer.end()) &&
-            (imu_msg_buffer.begin()->timeStampToSec-msg->timeStampToSec <= 0.0)) {
+            (imu_msg_buffer.begin()->timeStampToSec - msg->timeStampToSec <= 0.0)) {
             bFirstImg = true;
             printf("Images from now on will be utilized...\n");
         }
@@ -383,7 +403,7 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
         }
     } else if ( OTHER_IMAGES==image_state ) {
         // Integrate gyro data to get a guess of rotation between current and previous image
-//        integrateImuData(R_Prev2Curr, imu_msg_buffer);
+        //integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
         // Tracking features
         auto t1 = std::chrono::high_resolution_clock::now();
@@ -417,34 +437,13 @@ bool ImageProcessor::processImage(const ImageDataPtr& msg,
 }
 
 
-bool ImageProcessor::initializeFirstFrame() {
-    printf("initializeFirstFrame called...\n");
-
-    // Get current image
-    const Mat& img = curr_img_ptr->image;
-
-    // The tracking call for this first stage only
-    // consists of detecting new features from the
-    // very first image received
-    trackImage(img, current_tracked_points_map);
-
-    // Initialize last publish time
-    last_pub_time = curr_img_ptr->timeStampToSec;
-
-    if (current_tracked_points_map.size() > 20)
-        return true;
-    else
-        return false;
-}
-
-
 bool ImageProcessor::trackFirstFeatures(
         const std::vector<ImuData>& imu_msg_buffer) {
     // Integrate gyro data to get a guess of rotation between current and previous image
-    integrateImuData(R_Prev2Curr, imu_msg_buffer);
+    //integrateImuData(R_Prev2Curr, imu_msg_buffer);
 
     // Pre-integrate first tracked points
-    tracker_gpu->imu_preintegration(R_Prev2Curr, cam_intrinsics);
+    //tracker_gpu->imu_preintegration(R_Prev2Curr, cam_intrinsics);
 
     // IDs of active features tracked
     std::vector<FeatureIDType> active_ids;
@@ -455,8 +454,7 @@ bool ImageProcessor::trackFirstFeatures(
     current_tracked_points_map.swap(previous_tracked_points_map);
 
     // Track previous points on new image
-    const Mat& img = curr_img_ptr->image;
-    trackImage(img, current_tracked_points_map);
+    trackImage(curr_img_ptr->image, current_tracked_points_map);
 
     // Previous and current points which have been
     // tracked through two consecutive images
@@ -477,13 +475,10 @@ bool ImageProcessor::trackFirstFeatures(
             // Tracked point initial lifetime
             tracked_points_lifetime_map[it.first] = 2;
 
-            // Tracked point in previous and current frame
-            cv::Point2f current_point = it.second;
-            cv::Point2f previous_point = previous_tracked_points_map[it.first];
-
-            // Populate inlier vectors
-            current_tracked_points.push_back(current_point);
-            previous_tracked_points.push_back(previous_point);
+            // Populate inlier vectors with
+            // matching tracked points
+            current_tracked_points.push_back(it.second);
+            previous_tracked_points.push_back(previous_tracked_points_map[it.first]);
         }
         // Newly detected point
         else
@@ -567,7 +562,7 @@ void ImageProcessor::trackFeatures() {
     }
 
     // Apply rotation to tracked points
-//    tracker_gpu->imu_preintegration(R_Prev2Curr, cam_intrinsics);
+    //tracker_gpu->imu_preintegration(R_Prev2Curr, cam_intrinsics);
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
@@ -581,8 +576,7 @@ void ImageProcessor::trackFeatures() {
     current_tracked_points_map.swap(previous_tracked_points_map);
 
     // Track previous points on new image
-    const Mat& img = curr_img_ptr->image;
-    trackImage(img, current_tracked_points_map);
+    trackImage(curr_img_ptr->image, current_tracked_points_map);
 
     // Remove dead features
 //    clearDeadFeatures();
@@ -602,13 +596,9 @@ void ImageProcessor::trackFeatures() {
         {
             active_ids.push_back(it.first);
 
-            // Corresponding points in tracking process
-            cv::Point2f current_point = it.second;
-            cv::Point2f previous_point = previous_tracked_points_map[it.first];
-
             // Populate inliers
-            current_tracked_points.push_back(current_point);
-            previous_tracked_points.push_back(previous_point);
+            current_tracked_points.push_back(it.second);
+            previous_tracked_points.push_back(previous_tracked_points_map[it.first]);
 
             // Tracked point lifetime
             tracked_points_lifetime_map[it.first] += 1;
@@ -731,6 +721,8 @@ void ImageProcessor::undistortPoints(
     if (camera_model == "plumb_bob") {
         cv::undistortPoints(pts_in, pts_out, K, plumb_bob_distortion_coeffs,
                             rectification_matrix, K_new);
+
+        std::cout << "New camera intrinsics: " << K_new << std::endl;
     }
     else if (camera_model == "pinhole") {
         if (distortion_model == "radtan") {

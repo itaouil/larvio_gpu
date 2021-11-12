@@ -10,38 +10,38 @@ estimate_extrin: 0   # 0(false) or 1(true)
 calib_imu_instrinsic: 0    # 0(false) or 1(true)
 
 # camera instrinsic (1280x800)
-camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
-distortion_model: ""    # only support "radtan" and "equidistant" for pinhole
-resolution_width: 1280
-resolution_height: 800
-intrinsics:
-   fx: 633.488891601562
-   fy: 632.841979980469
-   cx: 638.784301757812
-   cy: 399.088897705078
-distortion_coeffs:
-   k1: -0.0603683330118656
-   k2: 0.0706426501274109
-   p1: -0.000265250680968165
-   p2: 0.000434541725553572
-   k3: -0.0222842656075954
-
-# camera instrinsic (848x480)
 #camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
 #distortion_model: ""    # only support "radtan" and "equidistant" for pinhole
-#resolution_width: 848
-#resolution_height: 480
+#resolution_width: 1280
+#resolution_height: 800
 #intrinsics:
-#   fx: 419.686370849609
-#   fy: 419.2578125
-#   cx: 423.194580078125
-#   cy: 239.396392822266
+#   fx: 633.488891601562
+#   fy: 632.841979980469
+#   cx: 638.784301757812
+#   cy: 399.088897705078
 #distortion_coeffs:
 #   k1: -0.0603683330118656
 #   k2: 0.0706426501274109
 #   p1: -0.000265250680968165
 #   p2: 0.000434541725553572
 #   k3: -0.0222842656075954
+
+# camera instrinsic (848x480)
+camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
+distortion_model: ""    # only support "radtan" and "equidistant" for pinhole
+resolution_width: 848
+resolution_height: 480
+intrinsics:
+   fx: 419.686370849609
+   fy: 419.2578125
+   cx: 423.194580078125
+   cy: 239.396392822266
+distortion_coeffs:
+   k1: -0.0603683330118656
+   k2: 0.0706426501274109
+   p1: -0.000265250680968165
+   p2: 0.000434541725553572
+   k3: -0.0222842656075954
 
 ## camera instrinsic (640x360)
 #camera_model: "plumb_bob"       # support "pinhole" and "plumb_bob"
@@ -73,8 +73,8 @@ T_cam_imu: !!opencv-matrix
 td: 0.0
 
 # visual front-end parameters
-flag_equalize: 1
-pub_frequency: 35
+flag_equalize: 0
+pub_frequency: 65
 publish_features: 1
 max_features_num: 200
 
@@ -123,7 +123,7 @@ static_duration: 1.0
 
 # measurement rate
 imu_rate: 400
-img_rate: 30
+img_rate: 60
 
 # augmented feature state settings
 max_features_in_one_grid: 1     # pure msckf if set to 0
