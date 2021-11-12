@@ -155,6 +155,8 @@ void StaticInitializer::assignInitialState(std::vector<ImuData>& imu_msg_buffer,
   imu_state.acc_bias = acc_bias;
   imu_state.orientation = orientation;
   imu_state.position = position;
+//  imu_state.orientation = Vector4d{0.3504, -0.6138, 0.3504, -0.6144};
+//  imu_state.position = Vector3d{0, 0, 0.5940};
   imu_state.velocity = velocity;
 
   return;
