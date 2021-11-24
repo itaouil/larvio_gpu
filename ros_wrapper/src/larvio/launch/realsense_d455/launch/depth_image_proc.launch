@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="nodelet" type="nodelet" name="my_manager" args="manager" output="screen"/>
+    <node name="pointcloud" pkg="nodelet" type="nodelet" args="load depth_image_proc/point_cloud_xyz my_manager">
+        <remap from="camera_info" to="/d455/depth/camera_info" />
+        <remap from="image_rect" to="/d455/depth/image_rect_raw" />
+    </node>
+</launch>

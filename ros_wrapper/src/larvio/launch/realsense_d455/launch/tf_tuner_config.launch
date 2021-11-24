@@ -1,0 +1,9 @@
+<launch>
+    <node name="config_server" pkg="config_server" type="config_server" output="screen" required="false">
+        <param name="config_path" value="$(find obstacle_clustering)/config"/>
+        <param name="robot_name" value="cameras"/>  
+    </node>
+    
+    <node name="tf_tuner_cam_1" pkg="tf_tuner" type="tf_tuner" args="/base_link /d455_link" respawn="true" />
+
+</launch>
