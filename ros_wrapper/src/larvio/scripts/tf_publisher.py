@@ -1,71 +1,60 @@
 #!/usr/bin/env python
 import rospy
 import tf2_ros
+import numpy as np
 import tf2_geometry_msgs
+import tf.transformations
 from geometry_msgs.msg import TransformStamped, PoseWithCovarianceStamped
-
 
 # Global variables
 listener = None
 tf_buffer = None
-d455_optical_frame_to_d455_link = None
+link_to_world = None
+link_to_optical_numpy = None
+br = tf.TransformBroadcaster()
+
+
+def publish_static_transform():
+    rate = rospy.Rate(10000.0)
+    while not rospy.is_shutdown():
+
+        if link_to_world is None:
+            continue
+
+        # Publish transform
+        br.sendTransform(tf.transformations.translation_from_matrix(link_to_world),
+                         tf.transformations.quaternion_from_matrix(link_to_world),
+                         rospy.Time.now(),
+                         "d455_link",
+                         "world")
+
+        rate.sleep()
 
 
 def odom_callback(msg):
     global listener
     global tf_buffer
-    global d455_optical_frame_to_d455_link
+    global link_to_world
+    global link_to_optical_numpy
 
-    br = tf2_ros.TransformBroadcaster()
-    t = TransformStamped()
+    # Create 4x4 numpy optical to world transformation
+    optical_to_world_numpy_rot = tf.transformations.quaternion_matrix([msg.pose.pose.orientation.x,
+                                                                       msg.pose.pose.orientation.y,
+                                                                       msg.pose.pose.orientation.z,
+                                                                       msg.pose.pose.orientation.w])
+    optical_to_world_numpy_trans = tf.transformations.translation_matrix([msg.pose.pose.position.x,
+                                                                          msg.pose.pose.position.y,
+                                                                          msg.pose.pose.position.z])
+    optical_to_world_numpy = np.dot(optical_to_world_numpy_trans, optical_to_world_numpy_rot)
 
-    # Odom pose in color optical frame
-    odom_optical_frame = tf2_geometry_msgs.PoseStamped()
-    odom_optical_frame.header.stamp = rospy.Time.now()
-    odom_optical_frame.header.frame_id = "d455_color_optical_frame"
-    odom_optical_frame.pose.position.x = msg.pose.pose.position.x
-    odom_optical_frame.pose.position.y = msg.pose.pose.position.y
-    odom_optical_frame.pose.position.z = msg.pose.pose.position.z
-    odom_optical_frame.pose.orientation.x = msg.pose.pose.orientation.x
-    odom_optical_frame.pose.orientation.y = msg.pose.pose.orientation.y
-    odom_optical_frame.pose.orientation.z = msg.pose.pose.orientation.z
-    odom_optical_frame.pose.orientation.w = msg.pose.pose.orientation.w
-
-    odom_d455_link = None
-    try:
-        odom_d455_link = tf_buffer.transform(odom_optical_frame, "d455_link", rospy.Duration(0))
-    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-        print("Could not convert odom from optical frame to d455 link")
-
-    # t.header.stamp = rospy.Time.now()
-    # t.header.frame_id = "world"
-    # t.child_frame_id = "d455_link"
-    # t.transform.translation.x = odom_d455_link.pose.position.x
-    # t.transform.translation.y = odom_d455_link.pose.position.y
-    # t.transform.translation.z = odom_d455_link.pose.position.z
-    # t.transform.rotation.x = odom_d455_link.pose.orientation.x
-    # t.transform.rotation.y = odom_d455_link.pose.orientation.y
-    # t.transform.rotation.z = odom_d455_link.pose.orientation.z
-    # t.transform.rotation.w = odom_d455_link.pose.orientation.w
-
-    t.header.stamp = rospy.Time.now()
-    t.header.frame_id = "world"
-    t.child_frame_id = "d455_link"
-    t.transform.translation.x = msg.pose.pose.position.x
-    t.transform.translation.y = msg.pose.pose.position.y
-    t.transform.translation.z = msg.pose.pose.position.z
-    t.transform.rotation.x = msg.pose.pose.orientation.x
-    t.transform.rotation.y = msg.pose.pose.orientation.y
-    t.transform.rotation.z = msg.pose.pose.orientation.z
-    t.transform.rotation.w = msg.pose.pose.orientation.w
-
-    br.sendTransform(t)
+    # Compute link to world
+    link_to_world = np.dot(optical_to_world_numpy, link_to_optical_numpy)
 
 
 def main():
     global listener
     global tf_buffer
-    global d455_optical_frame_to_d455_link
+    global link_to_optical_numpy
 
     # Create ROS node
     rospy.init_node('tf_publisher')
@@ -74,10 +63,29 @@ def main():
     tf_buffer = tf2_ros.Buffer()
     listener = tf2_ros.TransformListener(tf_buffer)
 
+    # Acquire static transform between
+    # the color optical frame and the
+    # link frame
     rate = rospy.Rate(10.0)
     while not rospy.is_shutdown():
         try:
-            d455_optical_frame_to_d455_link = tf_buffer.lookup_transform("d455_color_optical_frame", "d455_link", rospy.Time(1))
+            # Optical to link frame transformation
+            link_to_optical = tf_buffer.lookup_transform("d455_color_optical_frame", "d455_link", rospy.Time(1))
+
+            # Create 4x4 numpy optical to link transformation
+            link_to_optical_numpy_rot = tf.transformations.quaternion_matrix([link_to_optical.transform.rotation.x,
+                                                                              link_to_optical.transform.rotation.y,
+                                                                              link_to_optical.transform.rotation.z,
+                                                                              link_to_optical.transform.rotation.w])
+            link_to_optical_numpy_trans = tf.transformations.translation_matrix(
+                [link_to_optical.transform.translation.x,
+                 link_to_optical.transform.translation.y,
+                 link_to_optical.transform.translation.z])
+            link_to_optical_numpy = np.dot(link_to_optical_numpy_trans, link_to_optical_numpy_rot)
+
+            print(link_to_optical_numpy)
+            print(link_to_optical_numpy_rot)
+            print(link_to_optical_numpy_trans)
             break
 
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
@@ -86,6 +94,9 @@ def main():
 
     # Subscribe to VIO odom topic
     rospy.Subscriber('/qxc_robot/system/pose', PoseWithCovarianceStamped, odom_callback)
+
+    # Publish public transform
+    publish_static_transform()
 
     # Spin it
     rospy.spin()

@@ -721,8 +721,6 @@ void ImageProcessor::undistortPoints(
     if (camera_model == "plumb_bob") {
         cv::undistortPoints(pts_in, pts_out, K, plumb_bob_distortion_coeffs,
                             rectification_matrix, K_new);
-
-        std::cout << "New camera intrinsics: " << K_new << std::endl;
     }
     else if (camera_model == "pinhole") {
         if (distortion_model == "radtan") {
